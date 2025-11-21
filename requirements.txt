@@ -1,2 +1,2 @@
-# Add Python packages here, e.g.
-# numpy==1.26.4
+# Python dependencies for ARC-AGI
+openai>=1.35.7
