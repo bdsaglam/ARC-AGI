@@ -258,20 +258,42 @@ def call_model(
 
 
 def parse_grid_from_text(raw_text: str) -> Grid:
-    rows: Grid = []
+    candidate_rows = []
     for line in raw_text.strip().splitlines():
         stripped = line.strip()
+        if stripped.startswith("```"):
+            continue
         if not stripped:
             continue
         tokens = stripped.split()
         if tokens and all(token.isdigit() for token in tokens):
-            rows.append([int(token) for token in tokens])
-    if not rows:
+            candidate_rows.append([int(token) for token in tokens])
+        else:
+            candidate_rows.append(None)
+
+    blocks = []
+    current_block = []
+
+    for row in candidate_rows:
+        if row is None:
+            if current_block:
+                blocks.append(current_block)
+                current_block = []
+        else:
+            if current_block and len(row) != len(current_block[0]):
+                blocks.append(current_block)
+                current_block = [row]
+            else:
+                current_block.append(row)
+
+    if current_block:
+        blocks.append(current_block)
+
+    if not blocks:
         raise ValueError("Could not parse any numeric rows from OpenAI response.")
-    width = len(rows[0])
-    if any(len(row) != width for row in rows):
-        raise ValueError("Parsed grid has inconsistent row lengths.")
-    return rows
+
+    # Return the last block
+    return blocks[-1]
 
 
 def verify_prediction(predicted: Grid, expected: Grid) -> bool:
@@ -357,7 +379,7 @@ def print_result_row(
     row = (
         [str(row_idx), str(task_path), str(test_idx)]
         + [values[col] for col in TABLE_COLUMNS]
-        + [f"{duration:.2f}", f"{cost:.4f}"]
+        + [f"{duration:.2f}", f"{cost:.2f}"]
     )
     print("| " + " | ".join(row) + " |")
 
