@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Tuple
@@ -12,15 +13,27 @@ from openai import OpenAI
 
 Grid = List[List[int]]
 MODEL_NAME = "gpt-5.1"
+PRICING_PER_1M_TOKENS = {
+    "gpt-5.1": {"input": 1.25, "cached_input": 0.125, "output": 10.00},
+}
 SUPPORTED_REASONING = {"none", "low", "medium", "high"}
-TABLE_COLUMNS = ["Reasoning=None", "Reasoning=Low"]
-ResultRecord = Tuple[Path, int, bool, str]
+TABLE_COLUMNS = ["Reasoning=None", "Reasoning=Low", "Reasoning=Medium", "Reasoning=High"]
+ResultRecord = Tuple[Path, int, bool, str, float, float]
 
 
 @dataclass
 class Example:
     input: Grid
     output: Grid
+
+
+@dataclass
+class ModelResponse:
+    text: str
+    prompt_tokens: int
+    cached_tokens: int
+    completion_tokens: int
+
 
 
 @dataclass
@@ -105,21 +118,41 @@ def ensure_reasoning_supported(model: str, reasoning_effort: str) -> None:
         )
 
 
-def call_openai(client: OpenAI, prompt: str, reasoning_effort: str) -> str:
+def call_openai(client: OpenAI, prompt: str, reasoning_effort: str) -> ModelResponse:
     ensure_reasoning_supported(MODEL_NAME, reasoning_effort)
     request_kwargs = {"model": MODEL_NAME, "input": prompt}
     if reasoning_effort != "none":
         request_kwargs["reasoning"] = {"effort": reasoning_effort}
 
     response = client.responses.create(**request_kwargs)
+    text_output = None
     for item in response.output or []:
         contents = getattr(item, "content", None)
         if not contents:
             continue
         for content in contents:
             if getattr(content, "type", None) in {"text", "output_text"}:
-                return content.text.strip()
-    raise RuntimeError("OpenAI response did not contain text output.")
+                text_output = content.text.strip()
+                break
+        if text_output:
+            break
+
+    if not text_output:
+        raise RuntimeError("OpenAI response did not contain text output.")
+
+    usage = getattr(response, "usage", None)
+    prompt_tokens = getattr(usage, "input_tokens", 0) if usage else 0
+    completion_tokens = getattr(usage, "output_tokens", 0) if usage else 0
+
+    prompt_details = getattr(usage, "input_tokens_details", None)
+    cached_tokens = getattr(prompt_details, "cached_tokens", 0) if prompt_details else 0
+
+    return ModelResponse(
+        text=text_output,
+        prompt_tokens=prompt_tokens,
+        cached_tokens=cached_tokens,
+        completion_tokens=completion_tokens,
+    )
 
 
 def parse_grid_from_text(raw_text: str) -> Grid:
@@ -153,30 +186,62 @@ def solve_task(
     for idx, test_example in enumerate(task.test, start=1):
         prompt = build_prompt(task.train, test_example)
         success = False
+        duration = 0.0
+        cost = 0.0
         try:
-            response_text = call_openai(client, prompt, reasoning_effort)
-            predicted_grid = parse_grid_from_text(response_text)
+            start_time = time.perf_counter()
+            model_response = call_openai(client, prompt, reasoning_effort)
+            duration = time.perf_counter() - start_time
+
+            pricing = PRICING_PER_1M_TOKENS.get(
+                MODEL_NAME, {"input": 0, "cached_input": 0, "output": 0}
+            )
+            non_cached_input = max(
+                0, model_response.prompt_tokens - model_response.cached_tokens
+            )
+            cost = (
+                (non_cached_input / 1_000_000 * pricing["input"])
+                + (model_response.cached_tokens / 1_000_000 * pricing.get("cached_input", 0))
+                + (model_response.completion_tokens / 1_000_000 * pricing["output"])
+            )
+
+            predicted_grid = parse_grid_from_text(model_response.text)
             success = verify_prediction(predicted_grid, test_example.output)
         except Exception as exc:
             print(f"Task {task_path} test {idx} failed: {exc}", file=sys.stderr)
-        outcomes.append((task_path, idx, success, reasoning_effort))
+        outcomes.append((task_path, idx, success, reasoning_effort, duration, cost))
     return outcomes
 
 
 def print_table_header() -> None:
-    columns = ["#", "Task", "Test"] + TABLE_COLUMNS
+    columns = ["#", "Task", "Test"] + TABLE_COLUMNS + ["Time (s)", "Cost ($)"]
     print("| " + " | ".join(columns) + " |")
     print("| " + " | ".join(["---"] * len(columns)) + " |")
 
 
-def print_result_row(row_idx: int, task_path: Path, test_idx: int, success: bool, reasoning: str) -> None:
+def print_result_row(
+    row_idx: int,
+    task_path: Path,
+    test_idx: int,
+    success: bool,
+    reasoning: str,
+    duration: float,
+    cost: float,
+) -> None:
     column_key = f"Reasoning={reasoning.capitalize()}"
     if column_key not in TABLE_COLUMNS:
-        print(f"Unsupported reasoning column {column_key}. Update TABLE_COLUMNS to include it.", file=sys.stderr)
+        print(
+            f"Unsupported reasoning column {column_key}. Update TABLE_COLUMNS to include it.",
+            file=sys.stderr,
+        )
         return
     values = {column: "-" for column in TABLE_COLUMNS}
     values[column_key] = "PASS" if success else "FAIL"
-    row = [str(row_idx), str(task_path), str(test_idx)] + [values[col] for col in TABLE_COLUMNS]
+    row = (
+        [str(row_idx), str(task_path), str(test_idx)]
+        + [values[col] for col in TABLE_COLUMNS]
+        + [f"{duration:.2f}", f"{cost:.4f}"]
+    )
     print("| " + " | ".join(row) + " |")
 
 
