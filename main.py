@@ -24,9 +24,9 @@ PRICING_PER_1M_TOKENS = {
         "output": 15.00,
     },
     "gemini-3-pro-preview": {
-        "input": 1.25,
-        "cached_input": 0.125,
-        "output": 5.00,
+        "input": 2.00,
+        "cached_input": 0.0,
+        "output": 12.00,
     },
 }
 
@@ -55,7 +55,7 @@ def get_column_name(model_arg: str) -> str:
 
 
 TABLE_COLUMNS = [get_column_name(m) for m in ORDERED_MODELS]
-ResultRecord = Tuple[Path, int, bool, str]
+ResultRecord = Tuple[Path, int, bool, str, float, float]
 
 
 def parse_model_arg(model_arg: str) -> Tuple[str, str, object]:
@@ -377,20 +377,53 @@ def solve_task(
     for idx, test_example in enumerate(task.test, start=1):
         prompt = build_prompt(task.train, test_example)
         success = False
+        duration = 0.0
+        cost = 0.0
         try:
+            start_time = time.perf_counter()
             model_response = call_model(
                 openai_client, anthropic_client, google_client, prompt, model_arg
             )
+            duration = time.perf_counter() - start_time
+
+            _, base_model, _ = parse_model_arg(model_arg)
+            pricing = PRICING_PER_1M_TOKENS.get(
+                base_model, {"input": 0, "cached_input": 0, "output": 0}
+            )
+
+            # Handle Gemini 3 tiered pricing (Long Context)
+            if (
+                base_model == "gemini-3-pro-preview"
+                and model_response.prompt_tokens > 200000
+            ):
+                pricing = {"input": 4.00, "cached_input": 0.0, "output": 18.00}
+
+            non_cached_input = max(
+                0, model_response.prompt_tokens - model_response.cached_tokens
+            )
+
+            # NOTE: Cost calculation includes thinking tokens (bundled in completion_tokens for Gemini)
+            # NOTE: Time and Cost are printed to STDOUT but NOT saved to Results.md (by user preference).
+            cost = (
+                (non_cached_input / 1_000_000 * pricing["input"])
+                + (
+                    model_response.cached_tokens
+                    / 1_000_000
+                    * pricing.get("cached_input", 0)
+                )
+                + (model_response.completion_tokens / 1_000_000 * pricing["output"])
+            )
+
             predicted_grid = parse_grid_from_text(model_response.text)
             success = verify_prediction(predicted_grid, test_example.output)
         except Exception as exc:
             print(f"Task {task_path} test {idx} failed: {exc}", file=sys.stderr)
-        outcomes.append((task_path, idx, success, model_arg))
+        outcomes.append((task_path, idx, success, model_arg, duration, cost))
     return outcomes
 
 
 def print_table_header() -> None:
-    columns = ["#", "Task", "Test"] + TABLE_COLUMNS
+    columns = ["#", "Task", "Test"] + TABLE_COLUMNS + ["Time (s)", "Cost ($)"]
     print("| " + " | ".join(columns) + " |")
     print("| " + " | ".join(["---"] * len(columns)) + " |")
 
@@ -401,6 +434,8 @@ def print_result_row(
     test_idx: int,
     success: bool,
     model_arg: str,
+    duration: float,
+    cost: float,
 ) -> None:
     column_key = get_column_name(model_arg)
 
@@ -412,9 +447,11 @@ def print_result_row(
         return
     values = {column: "-" for column in TABLE_COLUMNS}
     values[column_key] = "PASS" if success else "FAIL"
-    row = [str(row_idx), str(task_path), str(test_idx)] + [
-        values[col] for col in TABLE_COLUMNS
-    ]
+    row = (
+        [str(row_idx), str(task_path), str(test_idx)]
+        + [values[col] for col in TABLE_COLUMNS]
+        + [f"{duration:.2f}", f"{cost:.2f}"]
+    )
     print("| " + " | ".join(row) + " |")
 
 
