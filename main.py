@@ -22,28 +22,30 @@ PRICING_PER_1M_TOKENS = {
         "output": 15.00,
     },
 }
-SUPPORTED_MODELS = {
+
+ORDERED_MODELS = [
     "gpt-5.1-none",
     "gpt-5.1-low",
     "gpt-5.1-medium",
     "gpt-5.1-high",
     "claude-sonnet-4.5-no-thinking",
-    "claude-sonnet-4.5-thinking-1000",
+    "claude-sonnet-4.5-thinking-1024",
     "claude-sonnet-4.5-thinking-4000",
     "claude-sonnet-4.5-thinking-16000",
     "claude-sonnet-4.5-thinking-64000",
-}
-TABLE_COLUMNS = [
-    "Reasoning=None",
-    "Reasoning=Low",
-    "Reasoning=Medium",
-    "Reasoning=High",
-    "Reasoning=No-Thinking",
-    "Reasoning=Thinking-1000",
-    "Reasoning=Thinking-4000",
-    "Reasoning=Thinking-16000",
-    "Reasoning=Thinking-64000",
 ]
+SUPPORTED_MODELS = set(ORDERED_MODELS)
+
+
+def get_column_name(model_arg: str) -> str:
+    parts = model_arg.split("-")
+    formatted_parts = [p.title() if not p[0].isdigit() else p for p in parts]
+    name = "-".join(formatted_parts)
+    name = name.replace("Gpt", "GPT")
+    return name
+
+
+TABLE_COLUMNS = [get_column_name(m) for m in ORDERED_MODELS]
 ResultRecord = Tuple[Path, int, bool, str, float, float]
 
 
@@ -360,13 +362,7 @@ def print_result_row(
     duration: float,
     cost: float,
 ) -> None:
-    _, _, config = parse_model_arg(model_arg)
-    if isinstance(config, str):
-        column_key = f"Reasoning={config.capitalize()}"
-    elif config is None or config == 0:
-        column_key = "Reasoning=No-Thinking"
-    else:
-        column_key = f"Reasoning=Thinking-{config}"
+    column_key = get_column_name(model_arg)
 
     if column_key not in TABLE_COLUMNS:
         print(
