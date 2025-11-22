@@ -12,6 +12,8 @@ from typing import Iterable, List, Tuple
 
 from openai import OpenAI
 from anthropic import Anthropic
+from google import genai
+from google.genai import types
 
 Grid = List[List[int]]
 PRICING_PER_1M_TOKENS = {
@@ -20,6 +22,11 @@ PRICING_PER_1M_TOKENS = {
         "input": 3.00,
         "cached_input": 0.30,
         "output": 15.00,
+    },
+    "gemini-3-pro-preview": {
+        "input": 1.25,
+        "cached_input": 0.125,
+        "output": 5.00,
     },
 }
 
@@ -33,6 +40,8 @@ ORDERED_MODELS = [
     "claude-sonnet-4.5-thinking-4000",
     "claude-sonnet-4.5-thinking-16000",
     "claude-sonnet-4.5-thinking-64000",
+    "gemini-3-low",
+    "gemini-3-high",
 ]
 SUPPORTED_MODELS = set(ORDERED_MODELS)
 
@@ -70,6 +79,11 @@ def parse_model_arg(model_arg: str) -> Tuple[str, str, object]:
                 return "anthropic", base, budget
             except (IndexError, ValueError):
                 pass
+
+    if model_arg.startswith("gemini-3-"):
+        parts = model_arg.split("-")
+        effort = parts[-1]
+        return "google", "gemini-3-pro-preview", effort
 
     raise ValueError(f"Unknown model format: {model_arg}")
 
@@ -247,9 +261,48 @@ def call_anthropic(
     )
 
 
+def call_gemini(
+    client: genai.Client, prompt: str, model: str, thinking_level: str
+) -> ModelResponse:
+    # Map thinking_level to thinking_budget since SDK 1.47.0 lacks thinking_level
+    budget = 2048
+    if thinking_level == "high":
+        budget = 16384
+
+    config = types.GenerateContentConfig(
+        thinking_config=types.ThinkingConfig(include_thoughts=True, thinking_budget=budget),
+        temperature=0.7,
+        max_output_tokens=65536,  # Increase max tokens for thinking
+    )
+
+    response = client.models.generate_content(
+        model=model,
+        contents=prompt,
+        config=config,
+    )
+    
+    text_parts = []
+    if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+        for part in response.candidates[0].content.parts:
+            if part.text:
+                text_parts.append(part.text)
+    text = "".join(text_parts).strip()
+
+    usage = getattr(response, "usage_metadata", None)
+    p_tokens = usage.prompt_token_count if usage else 0
+    c_tokens = usage.candidates_token_count if usage else 0
+    return ModelResponse(
+        text=text,
+        prompt_tokens=p_tokens,
+        cached_tokens=0,
+        completion_tokens=c_tokens,
+    )
+
+
 def call_model(
     openai_client: OpenAI,
     anthropic_client: Anthropic,
+    google_client: genai.Client,
     prompt: str,
     model_arg: str,
 ) -> ModelResponse:
@@ -261,6 +314,10 @@ def call_model(
         if not anthropic_client:
             raise RuntimeError("Anthropic client not initialized.")
         return call_anthropic(anthropic_client, prompt, base_model, config)
+    elif provider == "google":
+        if not google_client:
+            raise RuntimeError("Google client not initialized.")
+        return call_gemini(google_client, prompt, base_model, config)
 
     raise ValueError(f"Unknown provider {provider}")
 
@@ -311,6 +368,7 @@ def verify_prediction(predicted: Grid, expected: Grid) -> bool:
 def solve_task(
     openai_client: OpenAI,
     anthropic_client: Anthropic,
+    google_client: genai.Client,
     task_path: Path,
     model_arg: str,
 ) -> List[ResultRecord]:
@@ -321,7 +379,7 @@ def solve_task(
         success = False
         try:
             model_response = call_model(
-                openai_client, anthropic_client, prompt, model_arg
+                openai_client, anthropic_client, google_client, prompt, model_arg
             )
             predicted_grid = parse_grid_from_text(model_response.text)
             success = verify_prediction(predicted_grid, test_example.output)
@@ -373,6 +431,11 @@ def main() -> None:
     if claude_key:
         anthropic_client = Anthropic(api_key=claude_key)
 
+    google_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    google_client = None
+    if google_key:
+        google_client = genai.Client(api_key=google_key)
+
     try:
         task_paths = load_task_paths(args.task_list)
     except ValueError as exc:
@@ -383,7 +446,12 @@ def main() -> None:
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
         future_to_path = {
             executor.submit(
-                solve_task, openai_client, anthropic_client, path, args.model
+                solve_task,
+                openai_client,
+                anthropic_client,
+                google_client,
+                path,
+                args.model,
             ): path
             for path in task_paths
         }
