@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Tuple
@@ -54,6 +55,12 @@ def parse_args() -> argparse.Namespace:
         choices=sorted(SUPPORTED_REASONING),
         default="none",
         help="Reasoning effort for OpenAI (supported: none, low, medium, high).",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=20,
+        help="Number of parallel worker threads (default: 20).",
     )
     return parser.parse_args()
 
@@ -261,11 +268,24 @@ def main() -> None:
 
     print_table_header()
     row_counter = 0
-    for path in task_paths:
-        task_results = solve_task(client, path, args.reasoning)
-        for record in task_results:
-            row_counter += 1
-            print_result_row(row_counter, *record)
+    with ThreadPoolExecutor(max_workers=args.workers) as executor:
+        future_to_path = {
+            executor.submit(solve_task, client, path, args.reasoning): path
+            for path in task_paths
+        }
+
+        for future in as_completed(future_to_path):
+            try:
+                task_results = future.result()
+                for record in task_results:
+                    row_counter += 1
+                    print_result_row(row_counter, *record)
+            except Exception as exc:
+                path = future_to_path[future]
+                print(
+                    f"Task execution for {path} generated an exception: {exc}",
+                    file=sys.stderr,
+                )
 
 
 if __name__ == "__main__":
