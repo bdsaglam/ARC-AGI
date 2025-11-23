@@ -291,6 +291,9 @@ def call_gemini(
     usage = getattr(response, "usage_metadata", None)
     p_tokens = usage.prompt_token_count if usage else 0
     c_tokens = usage.candidates_token_count if usage else 0
+    thoughts = getattr(usage, "thoughts_token_count", 0) or 0
+    c_tokens += thoughts
+
     return ModelResponse(
         text=text,
         prompt_tokens=p_tokens,
