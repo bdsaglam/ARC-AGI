@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Tuple, Optional
@@ -136,10 +137,22 @@ def call_anthropic(
 
     # Use streaming to avoid timeouts on long requests
     final_message = None
-    with client.messages.stream(**kwargs) as stream:
-        for text in stream.text_stream:
-            pass
-        final_message = stream.get_final_message()
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            with client.messages.stream(**kwargs) as stream:
+                for text in stream.text_stream:
+                    pass
+                final_message = stream.get_final_message()
+            break
+        except Exception as e:
+            err_str = str(e)
+            if "500" in err_str or "Internal server error" in err_str:
+                if attempt < max_retries - 1:
+                    delay = 5 if attempt == 0 else 30
+                    time.sleep(delay)
+                    continue
+            raise e
 
     text_parts = []
     for block in final_message.content:
@@ -173,11 +186,28 @@ def call_gemini(
         max_output_tokens=65536,
     )
 
-    response = client.models.generate_content(
-        model=model,
-        contents=prompt,
-        config=config,
-    )
+    response = None
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents=prompt,
+                config=config,
+            )
+            break
+        except Exception as e:
+            err_str = str(e)
+            if (
+                "503" in err_str
+                or "UNAVAILABLE" in err_str
+                or "overloaded" in err_str.lower()
+            ):
+                if attempt < max_retries - 1:
+                    delay = 5 if attempt == 0 else 30
+                    time.sleep(delay)
+                    continue
+            raise e
     
     text_parts = []
     if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:

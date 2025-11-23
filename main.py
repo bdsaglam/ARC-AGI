@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import datetime
+import json
 import os
 import sys
 import time
@@ -162,6 +164,7 @@ def main() -> None:
 
     print_table_header()
     row_counter = 0
+    all_results = []
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
         future_to_path = {
             executor.submit(
@@ -181,12 +184,55 @@ def main() -> None:
                 for record in task_results:
                     row_counter += 1
                     print_result_row(row_counter, *record)
+                all_results.extend(task_results)
             except Exception as exc:
                 path = future_to_path[future]
                 print(
                     f"Task execution for {path} generated an exception: {exc}",
                     file=sys.stderr,
                 )
+
+    if all_results:
+        total = len(all_results)
+        passed = sum(1 for r in all_results if r[2])
+        percent_pass = (passed / total) * 100 if total > 0 else 0.0
+
+        total_time = sum(r[4] for r in all_results)
+        avg_time = total_time / total if total > 0 else 0.0
+
+        total_cost = sum(r[5] for r in all_results)
+        avg_cost = total_cost / total if total > 0 else 0.0
+
+        print("\n--- Summary ---")
+        print(f"Pass Rate: {percent_pass:.2f}% ({passed}/{total})")
+        print(f"Average Time: {avg_time:.2f}s")
+        print(f"Average Cost: ${avg_cost:.4f}")
+        print("---------------")
+
+        # JSON Logging
+        log_dir = Path("logs")
+        log_dir.mkdir(exist_ok=True)
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        dataset_name = args.task_list.stem
+        log_filename = f"{timestamp}_{args.model}_{dataset_name}.json"
+        log_path = log_dir / log_filename
+
+        log_data = []
+        for r in all_results:
+            log_data.append(
+                {
+                    "model": r[3],
+                    "task": str(r[0]),
+                    "test_index": r[1],
+                    "status": "PASS" if r[2] else "FAIL",
+                    "time": r[4],
+                    "cost": r[5],
+                }
+            )
+
+        log_path.write_text(json.dumps(log_data, indent=2))
+        print(f"Log saved to: {log_path}")
 
 if __name__ == "__main__":
     main()
