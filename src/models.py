@@ -82,7 +82,7 @@ def parse_model_arg(model_arg: str) -> Tuple[str, str, object]:
 def call_openai_internal(
     client: OpenAI, prompt: str, model: str, reasoning_effort: str
 ) -> ModelResponse:
-    request_kwargs = {"model": model, "input": prompt}
+    request_kwargs = {"model": model, "input": prompt, "timeout": 3600}
     if reasoning_effort != "none":
         request_kwargs["reasoning"] = {"effort": reasoning_effort}
 
@@ -99,6 +99,7 @@ def call_openai_internal(
                 or "500" in err_str
                 or "server_error" in err_str
                 or "upstream connect error" in err_str
+                or "timed out" in err_str
             ):
                 if attempt < max_retries - 1:
                     delay = 5 if attempt == 0 else 30
