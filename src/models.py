@@ -32,7 +32,7 @@ ORDERED_MODELS = [
     "claude-sonnet-4.5-thinking-1024",
     "claude-sonnet-4.5-thinking-4000",
     "claude-sonnet-4.5-thinking-16000",
-    "claude-sonnet-4.5-thinking-64000",
+    "claude-sonnet-4.5-thinking-60000",
     "gemini-3-low",
     "gemini-3-high",
 ]
@@ -116,9 +116,14 @@ def call_openai_internal(
 def call_anthropic(
     client: Anthropic, prompt: str, model: str, budget: int
 ) -> ModelResponse:
+    MODEL_MAX_TOKENS = 64000
     max_tokens = 8192
+
     if budget and budget > 0:
-        max_tokens = max(8192, budget + 4096)
+        max_tokens = min(budget + 4096, MODEL_MAX_TOKENS)
+        # Ensure budget is less than max_tokens to leave room for response
+        if budget >= max_tokens:
+            budget = max_tokens - 2048  # Reserve 2k for final answer
 
     kwargs = {
         "model": model,
@@ -129,18 +134,23 @@ def call_anthropic(
     if budget and budget > 0:
         kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
 
-    response = client.messages.create(**kwargs)
+    # Use streaming to avoid timeouts on long requests
+    final_message = None
+    with client.messages.stream(**kwargs) as stream:
+        for text in stream.text_stream:
+            pass
+        final_message = stream.get_final_message()
 
     text_parts = []
-    for block in response.content:
+    for block in final_message.content:
         if getattr(block, "type", None) == "text":
             text_parts.append(block.text)
 
     text = "".join(text_parts).strip()
 
-    p_tokens = response.usage.input_tokens
-    c_tokens = response.usage.output_tokens
-    cached = getattr(response.usage, "cache_read_input_tokens", 0) or 0
+    p_tokens = final_message.usage.input_tokens
+    c_tokens = final_message.usage.output_tokens
+    cached = getattr(final_message.usage, "cache_read_input_tokens", 0) or 0
 
     return ModelResponse(
         text=text,

@@ -1,4 +1,4 @@
-| # | Task | Test | GPT-5.1-None | GPT-5.1-Low | GPT-5.1-Medium | GPT-5.1-High | Claude-Sonnet-4.5-No-Thinking | Claude-Sonnet-4.5-Thinking-1024 | Claude-Sonnet-4.5-Thinking-4000 | Claude-Sonnet-4.5-Thinking-16000 | Claude-Sonnet-4.5-Thinking-64000 | Gemini-3-Low | Gemini-3-High |
+| # | Task | Test | GPT-5.1-None | GPT-5.1-Low | GPT-5.1-Medium | GPT-5.1-High | Claude-Sonnet-4.5-No-Thinking | Claude-Sonnet-4.5-Thinking-1024 | Claude-Sonnet-4.5-Thinking-4000 | Claude-Sonnet-4.5-Thinking-16000 | Claude-Sonnet-4.5-Thinking-60000 | Gemini-3-Low | Gemini-3-High |
 | --- | ------ | ------ | ----------------- | ---------------- | ------------------ | ---------------- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | data/arc-agi-2-training/00576224.json | 1 | PASS | - | - | - | PASS | - | - | - | - | PASS | - |
 | 2 | data/arc-agi-2-training/007bbfb7.json | 1 | FAIL | PASS | - | - | FAIL | FAIL | PASS | - | - | PASS | - |
