@@ -81,14 +81,14 @@ Dense representation. Rows are concatenated strings of digits, separated by `|`.
 Model: gpt-5.1-none
 Dataset: first_100
 
-| Format | Solved Test 1 | Solved Test 2 | Solved Test 3 |
-|---|---|---|---|
-| Standard | 9/104 | 8/104 | 8/104 |
-| Semicolon | 9/104 | 9/104 | 9/104 |
-| Xml | 7/104 | 8/104 | 9/104 |
-| Csv | 9/104 | 11/104 | 11/104 |
-| Python | 12/104 | 10/104 | 9/104 |
-| Sparse | 9/104 | 6/104 | 7/104 |
-| Ascii | 8/104 | 6/104 | 4/104 |
-| Mask | 8/104 | - | - |
-| Compact | 5/104 | - | - |
+| Format | Solved Test 1 | Solved Test 2 | Solved Test 3 | Solved Test 4 |
+|---|---|---|---|---|
+| Standard | 9/104 | 8/104 | 8/104 | 11/104 |
+| Semicolon | 9/104 | 9/104 | 9/104 | 8/104 |
+| Xml | 7/104 | 8/104 | 9/104 | 10/104 |
+| Csv | 9/104 | 11/104 | 11/104 | 11/104 |
+| Python | 12/104 | 10/104 | 9/104 | 8/104 |
+| Sparse | 9/104 | 6/104 | 7/104 | 6/104 |
+| Ascii | 8/104 | 6/104 | 4/104 | - |
+| Mask | 8/104 | - | - | - |
+| Compact | 5/104 | - | - | - |
