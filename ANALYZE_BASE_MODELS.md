@@ -1,3 +1,17 @@
+# Overall performance
+| Model | Passed Problems | Total Problems | Average Latency (s) | Average Cost | Pass Rate (%) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| gpt-5.1-none | 9 | 104 | 5 | $0.01 | 9% |
+| gpt-5.1-low | 42 | 104 | 62 | $0.04 | 40% |
+| gpt-5.1-medium | 66 | 104 | 249 | $0.13 | 63% |
+| gpt-5.1-high | 85 | 104 | 408 | $0.22 | 82% |
+| claude-sonnet-4.5-no-thinking | 38 | 104 | 15 | $0.02 | 37% |
+| claude-sonnet-4.5-thinking-1024 | 34 | 104 | 20 | $0.03 | 33% |
+| claude-sonnet-4.5-thinking-4000 | 42 | 104 | 37 | $0.04 | 40% |
+| claude-sonnet-4.5-thinking-16000 | 58 | 104 | 92 | $0.11 | 56% |
+| claude-sonnet-4.5-thinking-60000 | 76 | 104 | 180 | $0.23 | 73% |
+| gemini-3-low | 47 | 104 | 74 | $0.07 | 45% |
+| gemini-3-high | 72 | 104 | 147 | $0.16 | 69% |
 
 # Venn diagram between the strongest models
 <img width="1000" height="1000" alt="Code_Generated_Image" src="https://github.com/user-attachments/assets/4c1ec9d3-e486-496a-9d8e-913649a14a77" />
