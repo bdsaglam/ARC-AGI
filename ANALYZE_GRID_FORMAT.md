@@ -94,11 +94,13 @@ Dataset: first_100
 | Compact | 5/104 | - | - | - | - | - | - |
 
 
+
+
 ## Sparse Problems Analysis
 Pass rates for specific sparse problems across formats (Logs since 11:48:37).
 
 | Format | 19bb5feb | 1a2e2828 | 1cf80156 | 1bfc4729 | 1d0a4b61 |
-|---|---|---|---|---|---|---|
+|------------------
 | Standard | 100% (6/6) | 100% (6/6) | 0% (0/6) | 100% (6/6) | 100% (6/6) |
 | Semicolon | 100% (6/6) | 0% (0/6) | 0% (0/6) | 100% (6/6) | 100% (6/6) |
 | Xml | 100% (6/6) | 100% (6/6) | 0% (0/6) | 100% (6/6) | 100% (6/6) |
