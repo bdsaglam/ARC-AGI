@@ -1,3 +1,10 @@
+
+# Venn diagram between the strongest models
+![Uploading Code_Generated_Image.png…]()
+
+
+# Full comparison table
+
 | Test     | Test num | gpt-5.1-none | gpt-5.1-low | gpt-5.1-medium | gpt-5.1-high | claude-sonnet-4.5-no-thinking | claude-sonnet-4.5-thinking-1024 | claude-sonnet-4.5-thinking-4000 | claude-sonnet-4.5-thinking-16000 | claude-sonnet-4.5-thinking-60000 | gemini-3-low | gemini-3-high |
 |----------|----------|--------------|-------------|----------------|--------------|--------------------------------|----------------------------------|----------------------------------|-----------------------------------|-----------------------------------|--------------|---------------|
 | 0520fde7 | 1        | FAIL         | PASS        | PASS           | PASS         | PASS                           | PASS                             | PASS                             | PASS                              | PASS                              | PASS         | PASS          |
