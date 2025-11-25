@@ -230,10 +230,11 @@ def main() -> None:
     row_counter = 0
     all_results = []
 
-    for i in range(args.iterations):
-        with ThreadPoolExecutor(max_workers=args.workers) as executor:
-            future_to_path = {
-                executor.submit(
+    with ThreadPoolExecutor(max_workers=args.workers) as executor:
+        future_to_path = {}
+        for i in range(args.iterations):
+            for path in task_paths:
+                future = executor.submit(
                     solve_task,
                     openai_client,
                     anthropic_client,
@@ -243,23 +244,22 @@ def main() -> None:
                     args.grid_format,
                     args.strategy,
                     args.verbose,
-                ): path
-                for path in task_paths
-            }
+                )
+                future_to_path[future] = path
 
-            for future in as_completed(future_to_path):
-                try:
-                    task_results = future.result()
-                    for record in task_results:
-                        row_counter += 1
-                        print_result_row(row_counter, *record)
-                    all_results.extend(task_results)
-                except Exception as exc:
-                    path = future_to_path[future]
-                    print(
-                        f"Task execution for {path} generated an exception: {exc}",
-                        file=sys.stderr,
-                    )
+        for future in as_completed(future_to_path):
+            try:
+                task_results = future.result()
+                for record in task_results:
+                    row_counter += 1
+                    print_result_row(row_counter, *record)
+                all_results.extend(task_results)
+            except Exception as exc:
+                path = future_to_path[future]
+                print(
+                    f"Task execution for {path} generated an exception: {exc}",
+                    file=sys.stderr,
+                )
 
     if all_results:
         total = len(all_results)
