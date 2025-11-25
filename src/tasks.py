@@ -38,14 +38,24 @@ def load_task_paths(list_path: Path) -> List[Path]:
         result.append(Path(item))
     return result
 
-def build_prompt(train_examples: List[Example], test_example: Example, grid_format: GridFormat = GridFormat.STANDARD) -> str:
+def build_prompt(
+    train_examples: List[Example],
+    test_example: Example,
+    grid_format: GridFormat = GridFormat.STANDARD,
+    strategy: str = None,
+) -> str:
     lines = [
         "You are solving an ARC (Abstraction and Reasoning Corpus) task.",
-        "Each grid cell is an integer 0-9 representing a color.",
-        "Use the solved examples to infer the transformation and apply it to the test input.",
-        "",
-        "Solved examples:",
     ]
+    if strategy:
+        lines.append(f"Suggested Strategy: {strategy}")
+
+    lines.append("Each grid cell is an integer 0-9 representing a color.")
+    lines.append(
+        "Use the solved examples to infer the transformation and apply it to the test input."
+    )
+    lines.append("")
+    lines.append("Solved examples:")
     for idx, ex in enumerate(train_examples, start=1):
         lines.append(f"Example {idx}:")
         lines.append("input:")

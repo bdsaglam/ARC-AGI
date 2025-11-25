@@ -56,9 +56,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--grid-format",
         type=str,
-        default="standard",
+        default="csv",
         choices=[f.value for f in GridFormat],
         help="Format for grid representation.",
+    )
+    parser.add_argument(
+        "--strategy",
+        type=str,
+        default=None,
+        help="Suggested strategy to include in the prompt.",
     )
     return parser.parse_args()
 
@@ -69,12 +75,16 @@ def solve_task(
     task_path: Path,
     model_arg: str,
     grid_format_str: str,
+    strategy: str = None,
 ) -> List[ResultRecord]:
     grid_format = GridFormat(grid_format_str)
     task = load_task(task_path)
     outcomes: List[ResultRecord] = []
     for idx, test_example in enumerate(task.test, start=1):
-        prompt = build_prompt(task.train, test_example, grid_format=grid_format)
+        prompt = build_prompt(
+            task.train, test_example, grid_format=grid_format, strategy=strategy
+        )
+        print(f"--- PROMPT ---\n{prompt}\n--- END PROMPT ---", file=sys.stderr)
         success = False
         duration = 0.0
         cost = 0.0
@@ -82,6 +92,10 @@ def solve_task(
             start_time = time.perf_counter()
             model_response = call_model(
                 openai_client, anthropic_client, google_client, prompt, model_arg
+            )
+            print(
+                f"--- OUTPUT ---\n{model_response.text}\n--- END OUTPUT ---",
+                file=sys.stderr,
             )
             duration = time.perf_counter() - start_time
 
@@ -184,6 +198,7 @@ def main() -> None:
                 path,
                 args.model,
                 args.grid_format,
+                args.strategy,
             ): path
             for path in task_paths
         }
