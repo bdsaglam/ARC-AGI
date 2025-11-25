@@ -5,7 +5,7 @@ import json
 import requests
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 
 from openai import OpenAI
 from anthropic import Anthropic
@@ -18,6 +18,11 @@ PRICING_PER_1M_TOKENS = {
         "input": 3.00,
         "cached_input": 0.30,
         "output": 15.00,
+    },
+    "claude-opus-4-5-20251101": {
+        "input": 5.00,
+        "cached_input": 0.50,
+        "output": 25.00,
     },
     "gemini-3-pro-preview": {
         "input": 2.00,
@@ -36,6 +41,9 @@ ORDERED_MODELS = [
     "claude-sonnet-4.5-thinking-4000",
     "claude-sonnet-4.5-thinking-16000",
     "claude-sonnet-4.5-thinking-60000",
+    "claude-opus-4.5-low",
+    "claude-opus-4.5-medium",
+    "claude-opus-4.5-high",
     "gemini-3-low",
     "gemini-3-high",
 ]
@@ -71,6 +79,12 @@ def parse_model_arg(model_arg: str) -> Tuple[str, str, object]:
                 return "anthropic", base, budget
             except (IndexError, ValueError):
                 pass
+
+    if model_arg.startswith("claude-opus-4.5-"):
+        base = "claude-opus-4-5-20251101"
+        parts = model_arg.split("-")
+        effort = parts[-1]
+        return "anthropic", base, effort
 
     if model_arg.startswith("gemini-3-"):
         parts = model_arg.split("-")
@@ -137,25 +151,32 @@ def call_openai_internal(
     )
 
 def call_anthropic(
-    client: Anthropic, prompt: str, model: str, budget: int
+    client: Anthropic, prompt: str, model: str, config: Union[int, str]
 ) -> ModelResponse:
     MODEL_MAX_TOKENS = 64000
     max_tokens = 8192
 
-    if budget and budget > 0:
-        max_tokens = min(budget + 4096, MODEL_MAX_TOKENS)
-        # Ensure budget is less than max_tokens to leave room for response
-        if budget >= max_tokens:
-            budget = max_tokens - 2048  # Reserve 2k for final answer
-
     kwargs = {
         "model": model,
-        "max_tokens": max_tokens,
         "messages": [{"role": "user", "content": prompt}],
     }
 
-    if budget and budget > 0:
+    if isinstance(config, int) and config > 0:
+        # Thinking (Sonnet)
+        budget = config
+        max_tokens = min(budget + 4096, MODEL_MAX_TOKENS)
+        if budget >= max_tokens:
+            budget = max_tokens - 2048
         kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+    elif isinstance(config, str):
+        # Effort (Opus)
+        kwargs["extra_headers"] = {"anthropic-beta": "effort-2025-11-24"}
+        kwargs["extra_body"] = {"output_config": {"effort": config}}
+        # Keep max_tokens default or increase?
+        # User example used 2048.
+        max_tokens = 4096 # Increase slightly for reasoning output
+    
+    kwargs["max_tokens"] = max_tokens
 
     # Use streaming to avoid timeouts on long requests
     final_message = None
@@ -214,7 +235,7 @@ def call_gemini(
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
-            "temperature": 1.0,  # Recommended for thinking models
+            "temperature": 1.0,
             "maxOutputTokens": 65536,
             "thinkingConfig": {"includeThoughts": True, "thinkingLevel": level_enum},
         },
@@ -250,10 +271,6 @@ def call_gemini(
     try:
         candidate = response["candidates"][0]
         parts = candidate["content"]["parts"]
-        # Filter for text parts (ignore thought parts if they are separate/identifiable, or join all)
-        # Assuming text parts are the final answer.
-        # The API might return thoughts as parts too.
-        # I'll extract all text.
         text_parts = [p["text"] for p in parts if "text" in p]
         text = "".join(text_parts).strip()
 

@@ -66,6 +66,11 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Suggested strategy to include in the prompt.",
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Output full prompt and model answer to stderr.",
+    )
     return parser.parse_args()
 
 def solve_task(
@@ -76,6 +81,7 @@ def solve_task(
     model_arg: str,
     grid_format_str: str,
     strategy: str = None,
+    verbose: bool = False,
 ) -> List[ResultRecord]:
     grid_format = GridFormat(grid_format_str)
     task = load_task(task_path)
@@ -84,7 +90,8 @@ def solve_task(
         prompt = build_prompt(
             task.train, test_example, grid_format=grid_format, strategy=strategy
         )
-        print(f"--- PROMPT ---\n{prompt}\n--- END PROMPT ---", file=sys.stderr)
+        if verbose:
+            print(f"--- PROMPT ---\n{prompt}\n--- END PROMPT ---", file=sys.stderr)
         success = False
         duration = 0.0
         cost = 0.0
@@ -93,10 +100,11 @@ def solve_task(
             model_response = call_model(
                 openai_client, anthropic_client, google_client, prompt, model_arg
             )
-            print(
-                f"--- OUTPUT ---\n{model_response.text}\n--- END OUTPUT ---",
-                file=sys.stderr,
-            )
+            if verbose:
+                print(
+                    f"--- OUTPUT ---\n{model_response.text}\n--- END OUTPUT ---",
+                    file=sys.stderr,
+                )
             duration = time.perf_counter() - start_time
 
             _, base_model, _ = parse_model_arg(model_arg)
@@ -199,6 +207,7 @@ def main() -> None:
                 args.model,
                 args.grid_format,
                 args.strategy,
+                args.verbose,
             ): path
             for path in task_paths
         }
