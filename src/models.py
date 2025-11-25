@@ -174,8 +174,8 @@ def call_anthropic(
         kwargs["extra_body"] = {"output_config": {"effort": config}}
         # Keep max_tokens default or increase?
         # User example used 2048.
-        max_tokens = 4096 # Increase slightly for reasoning output
-    
+        max_tokens = 60000  # Increase slightly for reasoning output
+
     kwargs["max_tokens"] = max_tokens
 
     # Use streaming to avoid timeouts on long requests

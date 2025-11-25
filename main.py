@@ -71,6 +71,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Output full prompt and model answer to stderr.",
     )
+    parser.add_argument(
+        "--iterations",
+        type=int,
+        default=1,
+        help="Number of times to run the test suite.",
+    )
     return parser.parse_args()
 
 def solve_task(
@@ -196,35 +202,37 @@ def main() -> None:
     print_table_header()
     row_counter = 0
     all_results = []
-    with ThreadPoolExecutor(max_workers=args.workers) as executor:
-        future_to_path = {
-            executor.submit(
-                solve_task,
-                openai_client,
-                anthropic_client,
-                google_client,
-                path,
-                args.model,
-                args.grid_format,
-                args.strategy,
-                args.verbose,
-            ): path
-            for path in task_paths
-        }
 
-        for future in as_completed(future_to_path):
-            try:
-                task_results = future.result()
-                for record in task_results:
-                    row_counter += 1
-                    print_result_row(row_counter, *record)
-                all_results.extend(task_results)
-            except Exception as exc:
-                path = future_to_path[future]
-                print(
-                    f"Task execution for {path} generated an exception: {exc}",
-                    file=sys.stderr,
-                )
+    for i in range(args.iterations):
+        with ThreadPoolExecutor(max_workers=args.workers) as executor:
+            future_to_path = {
+                executor.submit(
+                    solve_task,
+                    openai_client,
+                    anthropic_client,
+                    google_client,
+                    path,
+                    args.model,
+                    args.grid_format,
+                    args.strategy,
+                    args.verbose,
+                ): path
+                for path in task_paths
+            }
+
+            for future in as_completed(future_to_path):
+                try:
+                    task_results = future.result()
+                    for record in task_results:
+                        row_counter += 1
+                        print_result_row(row_counter, *record)
+                    all_results.extend(task_results)
+                except Exception as exc:
+                    path = future_to_path[future]
+                    print(
+                        f"Task execution for {path} generated an exception: {exc}",
+                        file=sys.stderr,
+                    )
 
     if all_results:
         total = len(all_results)
@@ -249,7 +257,9 @@ def main() -> None:
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         dataset_name = args.task_list.stem
-        log_filename = f"{timestamp}_{args.model}_{args.grid_format}_{dataset_name}.json"
+        log_filename = (
+            f"{timestamp}_{args.model}_{args.grid_format}_{dataset_name}.json"
+        )
         log_path = log_dir / log_filename
 
         log_data = []
