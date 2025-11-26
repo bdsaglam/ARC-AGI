@@ -57,7 +57,7 @@ class ModelResponse:
     prompt_tokens: int
     cached_tokens: int
     completion_tokens: int
-    explanation: Optional[str] = None
+    strategy: Optional[str] = None
 
 def parse_model_arg(model_arg: str) -> Tuple[str, str, object]:
     if model_arg not in SUPPORTED_MODELS:
@@ -101,116 +101,26 @@ def call_openai_internal(
     prompt: str,
     model: str,
     reasoning_effort: str,
-    response_format: str = "text",
-    capture_thinking: bool = False,
-    two_stage_explanation: bool = False,
-    two_stage_explanation_reversed: bool = False,
+    return_strategy: bool = False,
     verbose: bool = False,
 ) -> ModelResponse:
     # Uniformly use the Responses API for all OpenAI calls
+    # Step 1: Solve the grid
     kwargs = {
         "model": model,
         "input": [{"role": "user", "content": prompt}],
         "timeout": 3600,
     }
 
-    # Configure reasoning parameters
+    if verbose:
+        print(f"--- REAL PROMPT STEP 1 (Solve) ---\n{prompt}\n--- END REAL PROMPT STEP 1 ---", file=sys.stderr)
+
+    # Configure reasoning parameters (Standard hidden reasoning for performance)
     if reasoning_effort != "none":
-        # Capture thinking summary takes precedence if both flags are set (though they shouldn't be)
-        if capture_thinking:
-            kwargs["reasoning"] = {
-                "effort": reasoning_effort,
-                "summary": "detailed"
-            }
-        else:
-            kwargs["reasoning"] = {
-                "effort": reasoning_effort
-            }
-
-    # Handle Reversed Two-Stage (Explain -> Solve)
-    if two_stage_explanation_reversed:
-        # Modify Step 1 Prompt to ask for explanation ONLY
-        # We append instruction to the user prompt
-        step1_content = prompt + "\n\nThink through the examples above, and what solution/strategy you would use to solve this problem to generate the test output. Please respond back with a brief explanation of the strategy you would deploy. Only respond with this, no explicit solution needed yet"
-        step1_input = [{"role": "user", "content": step1_content}]
-        kwargs["input"] = step1_input
-        
-        if verbose:
-            print(f"--- REAL PROMPT STEP 1 (Explain) ---\n{step1_content}\n--- END REAL PROMPT STEP 1 ---", file=sys.stderr)
-        
-        # STEP 1: Explain
-        response1 = None
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                response1 = client.responses.create(**kwargs)
-                break
-            except Exception as e:
-                # Error handling logic...
-                err_str = str(e)
-                if attempt < max_retries - 1 and ("Connection error" in err_str or "500" in err_str or "timed out" in err_str):
-                    time.sleep(5)
-                    continue
-                raise e
-        
-        # Extract Step 1 Explanation
-        explanation_text = ""
-        if hasattr(response1, "output"):
-            for item in response1.output:
-                if item.type == "message":
-                    for content_part in item.content:
-                        if content_part.type == "output_text":
-                            explanation_text += content_part.text
-        
-        # STEP 2: Solve (using previous_response_id)
-        step2_input_text = "Based on the brief explanation/strategy above, please work through the problem in great detail and depth to come up with the correct test output grid and output it. Respond with ONLY the completed output grid."
-        
-        if verbose:
-            print(f"--- REAL PROMPT STEP 2 (Solve) ---\n{step2_input_text}\n--- END REAL PROMPT STEP 2 ---", file=sys.stderr)
-        
-        kwargs_step2 = {
-            "model": model,
-            "previous_response_id": response1.id,
-            "input": [{"role": "user", "content": step2_input_text}],
-            "timeout": 3600
+        kwargs["reasoning"] = {
+            "effort": reasoning_effort
         }
-        
-        response2 = None
-        for attempt in range(max_retries):
-            try:
-                response2 = client.responses.create(**kwargs_step2)
-                break
-            except Exception as e:
-                 # If Step 2 fails, we return empty grid but preserve explanation
-                 print(f"Step 2 grid generation failed: {e}", file=sys.stderr)
-                 # Usage aggregation partial
-                 return ModelResponse(text="", prompt_tokens=0, cached_tokens=0, completion_tokens=0, explanation=explanation_text)
-        
-        # Extract Step 2 Grid
-        grid_text = ""
-        if hasattr(response2, "output"):
-            for item in response2.output:
-                if item.type == "message":
-                    for content_part in item.content:
-                        if content_part.type == "output_text":
-                            grid_text += content_part.text
-                            
-        # Aggregate Usage
-        usage1 = getattr(response1, "usage", None)
-        usage2 = getattr(response2, "usage", None)
-        
-        p_tokens = (getattr(usage1, "input_tokens", 0) or 0) + (getattr(usage2, "input_tokens", 0) or 0)
-        c_tokens = (getattr(usage1, "output_tokens", 0) or 0) + (getattr(usage2, "output_tokens", 0) or 0)
-        
-        return ModelResponse(
-            text=grid_text,
-            prompt_tokens=p_tokens,
-            cached_tokens=0,
-            completion_tokens=c_tokens,
-            explanation=explanation_text
-        )
 
-    # STEP 1: Solve the task (Standard or Forward Two-Stage)
     response = None
     max_retries = 3
     for attempt in range(max_retries):
@@ -232,21 +142,14 @@ def call_openai_internal(
                     continue
             raise e
 
-    # Extract Step 1 outputs
+    # Extract Step 1 Output (The Grid)
     text_output = ""
-    step1_explanation = ""
-    
     if hasattr(response, "output"):
         for item in response.output:
             if item.type == "message":
                 for content_part in item.content:
                     if content_part.type == "output_text":
                         text_output += content_part.text
-            elif item.type == "reasoning":
-                if item.summary:
-                    for summary_part in item.summary:
-                        if summary_part.type == "summary_text":
-                            step1_explanation += summary_part.text
 
     if not text_output:
          raise RuntimeError(f"OpenAI Responses API Step 1 did not return text output. Response: {response}")
@@ -256,21 +159,24 @@ def call_openai_internal(
     prompt_tokens = getattr(usage1, "input_tokens", 0) if usage1 else 0
     completion_tokens = getattr(usage1, "output_tokens", 0) if usage1 else 0
     
-    # If NOT two-stage, return immediately
-    if not two_stage_explanation:
+    # If strategy extraction is not requested, return immediately
+    if not return_strategy:
         return ModelResponse(
             text=text_output,
             prompt_tokens=prompt_tokens,
             cached_tokens=0,
             completion_tokens=completion_tokens,
-            explanation=step1_explanation if step1_explanation else None,
+            strategy=None,
         )
 
-    # STEP 2: Explain (using previous_response_id)
+    # STEP 2: Extract Strategy (using previous_response_id)
     step1_id = response.id
     
     step2_input = "Explain the strategy you used in broad terms such that it can be applied on other similar examples and other input data."
     
+    if verbose:
+        print(f"--- REAL PROMPT STEP 2 (Strategy Extraction) ---\n{step2_input}\n--- END REAL PROMPT STEP 2 ---", file=sys.stderr)
+
     kwargs_step2 = {
         "model": model,
         "previous_response_id": step1_id,
@@ -284,26 +190,24 @@ def call_openai_internal(
             response2 = client.responses.create(**kwargs_step2)
             break
         except Exception as e:
-             # If Step 2 fails, we fallback to Step 1 result
-             print(f"Step 2 explanation failed: {e}", file=sys.stderr)
+             # If Step 2 fails, we return the grid but with no strategy
+             print(f"Step 2 strategy extraction failed: {e}", file=sys.stderr)
              return ModelResponse(
                 text=text_output,
                 prompt_tokens=prompt_tokens,
                 cached_tokens=0,
                 completion_tokens=completion_tokens,
-                explanation=step1_explanation if step1_explanation else None,
+                strategy=None,
             )
 
-    # Parse Step 2 Text output
-    final_grid = text_output # Use step 1 grid
-    final_explanation = ""
-    
+    # Parse Step 2 Output (The Strategy)
+    strategy_text = ""
     if hasattr(response2, "output"):
         for item in response2.output:
             if item.type == "message":
                 for content_part in item.content:
                     if content_part.type == "output_text":
-                        final_explanation += content_part.text
+                        strategy_text += content_part.text
 
     # Accumulate Usage
     usage2 = getattr(response2, "usage", None)
@@ -311,11 +215,11 @@ def call_openai_internal(
     completion_tokens += getattr(usage2, "output_tokens", 0) if usage2 else 0
 
     return ModelResponse(
-        text=final_grid,
+        text=text_output,
         prompt_tokens=prompt_tokens,
         cached_tokens=0,
         completion_tokens=completion_tokens,
-        explanation=final_explanation,
+        strategy=strategy_text,
     )
 
 def call_anthropic(
@@ -323,8 +227,8 @@ def call_anthropic(
     prompt: str,
     model: str,
     config: Union[int, str],
-    response_format: str = "text",
-    capture_thinking: bool = False,
+    return_strategy: bool = False,
+    verbose: bool = False,
 ) -> ModelResponse:
     # Claude doesn't support native JSON schema enforcement in the same way as OpenAI/Gemini via API params yet
     # (or it requires tools which adds complexity). We rely on prompt instructions for now.
@@ -353,6 +257,9 @@ def call_anthropic(
 
     kwargs["max_tokens"] = max_tokens
 
+    if verbose:
+        print(f"--- REAL PROMPT STEP 1 (Anthropic Solve) ---\n{prompt}\n--- END REAL PROMPT STEP 1 ---", file=sys.stderr)
+
     # Use streaming to avoid timeouts on long requests
     final_message = None
     max_retries = 3
@@ -377,31 +284,96 @@ def call_anthropic(
                     continue
             raise e
 
+    # Extract Step 1 Text (The Grid)
     text_parts = []
-    thinking_parts = []
+    thinking_parts = [] # Capture thinking for log or single-stage case
+    
     for block in final_message.content:
         if getattr(block, "type", None) == "text":
             text_parts.append(block.text)
         elif getattr(block, "type", None) == "thinking":
-            # Capture thinking block if it exists
             thinking_parts.append(block.thinking)
 
-    text = "".join(text_parts).strip()
+    grid_text = "".join(text_parts).strip()
     
-    explanation = None
-    if capture_thinking and thinking_parts:
-        explanation = "\n\n".join(thinking_parts)
-
+    # Usage Step 1
     p_tokens = final_message.usage.input_tokens
     c_tokens = final_message.usage.output_tokens
     cached = getattr(final_message.usage, "cache_read_input_tokens", 0) or 0
 
+    if not return_strategy:
+        # Single stage: if we captured thinking (native), return it?
+        # The previous logic did: if capture_thinking and thinking_parts: explanation = ...
+        # Since return_strategy maps to that, if user asked for strategy but we are in single call mode (legacy?), 
+        # we might return native thoughts.
+        # But the "Solve-Then-Explain" plan implies we perform Step 2.
+        # Wait, if return_strategy is False, we return None.
+        # If the user wants NATIVE thinking without Step 2, that's not currently exposed as a separate flag for Claude
+        # in this new architecture (we deprecated capture-internal-thinking).
+        # So we just return grid.
+        return ModelResponse(
+            text=grid_text,
+            prompt_tokens=p_tokens,
+            cached_tokens=cached,
+            completion_tokens=c_tokens,
+            strategy=None,
+        )
+
+    # STEP 2: Explain (Two-Stage)
+    # We must feed back the FULL Step 1 content (Thinking + Text) to maintain context.
+    
+    step2_input = "Explain the strategy you used in broad terms such that it can be applied on other similar examples and other input data."
+    
+    if verbose:
+        print(f"--- REAL PROMPT STEP 2 (Anthropic Explain) ---\n{step2_input}\n--- END REAL PROMPT STEP 2 ---", file=sys.stderr)
+
+    # Construct history: User Prompt -> Assistant Step 1 (Thinking + Grid) -> User Step 2
+    messages_history = [
+        {"role": "user", "content": prompt},
+        {"role": "assistant", "content": final_message.content}, # Pass back the full content block list
+        {"role": "user", "content": step2_input}
+    ]
+    
+    kwargs_step2 = kwargs.copy()
+    kwargs_step2["messages"] = messages_history
+    # We can lower the budget for explanation if desired, but keeping it simple for now.
+    
+    final_message_2 = None
+    for attempt in range(max_retries):
+        try:
+            with client.messages.stream(**kwargs_step2) as stream:
+                for text in stream.text_stream:
+                    pass
+                final_message_2 = stream.get_final_message()
+            break
+        except Exception as e:
+             print(f"Step 2 strategy extraction failed: {e}", file=sys.stderr)
+             return ModelResponse(
+                text=grid_text,
+                prompt_tokens=p_tokens,
+                cached_tokens=cached,
+                completion_tokens=c_tokens,
+                strategy=None,
+            )
+
+    # Extract Step 2 Text (The Strategy)
+    strategy_parts = []
+    for block in final_message_2.content:
+        if getattr(block, "type", None) == "text":
+            strategy_parts.append(block.text)
+    strategy_text = "".join(strategy_parts).strip()
+    
+    # Accumulate Usage
+    p_tokens += final_message_2.usage.input_tokens
+    c_tokens += final_message_2.usage.output_tokens
+    cached += (getattr(final_message_2.usage, "cache_read_input_tokens", 0) or 0)
+
     return ModelResponse(
-        text=text,
+        text=grid_text,
         prompt_tokens=p_tokens,
         cached_tokens=cached,
         completion_tokens=c_tokens,
-        explanation=explanation,
+        strategy=strategy_text,
     )
 
 def call_gemini(
@@ -409,45 +381,37 @@ def call_gemini(
     prompt: str,
     model: str,
     thinking_level: str,
-    response_format: str = "text",
-    capture_thinking: bool = False,
+    return_strategy: bool = False,
+    verbose: bool = False,
 ) -> ModelResponse:
     # Use REST API to bypass SDK limitation regarding thinking_level
-    api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError("Google API Key not found in environment")
-
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-
-    level_enum = "LOW" if thinking_level == "low" else "HIGH"
+    # Note: We are switching to the SDK's Chat object to preserve Thought Signatures (reasoning context)
+    # effectively. The SDK 'client.chats.create' handles this state.
+    
+    # SDK 1.52.0+ uses 'thinking_level' (Enum)
+    level_enum = types.ThinkingLevel.LOW if thinking_level == "low" else types.ThinkingLevel.HIGH
 
     generation_config = {
         "temperature": 1.0,
-        "maxOutputTokens": 65536,
-        "thinkingConfig": {"includeThoughts": True, "thinkingLevel": level_enum},
+        "max_output_tokens": 65536,
+        "thinking_config": {"include_thoughts": True, "thinking_level": level_enum},
     }
 
-    # response_format="json" is now handled via prompt engineering (XML tags), not JSON schema.
-    # So we do not set generation_config["responseMimeType"] here.
+    # Initialize Chat Session
+    chat = client.chats.create(
+        model=model,
+        config=types.GenerateContentConfig(**generation_config)
+    )
 
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": generation_config,
-    }
+    if verbose:
+        print(f"--- REAL PROMPT STEP 1 (Gemini Solve) ---\n{prompt}\n--- END REAL PROMPT STEP 1 ---", file=sys.stderr)
 
+    # STEP 1: Solve
     response = None
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            resp = requests.post(
-                url, json=payload, headers={"Content-Type": "application/json"}
-            )
-            if resp.status_code != 200:
-                if resp.status_code == 503 or "503" in resp.text:
-                    raise Exception(f"503 Unavailable: {resp.text}")
-                raise Exception(f"API Error {resp.status_code}: {resp.text}")
-
-            response = resp.json()
+            response = chat.send_message(prompt)
             break
         except Exception as e:
             err_str = str(e)
@@ -463,31 +427,72 @@ def call_gemini(
             raise e
 
     try:
-        candidate = response["candidates"][0]
-        parts = candidate["content"]["parts"]
-        text_parts = [p["text"] for p in parts if "text" in p]
+        # Manually extract text to avoid SDK warning about 'thought_signature' parts
+        text_parts = []
+        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+            for part in response.candidates[0].content.parts:
+                if part.text:
+                    text_parts.append(part.text)
         text = "".join(text_parts).strip()
-
-        usage = response.get("usageMetadata", {})
-        p_tokens = usage.get("promptTokenCount", 0)
-        c_tokens = usage.get("candidatesTokenCount", 0)
-        thoughts = usage.get("thoughtsTokenCount", 0)
-        c_tokens += thoughts
         
-        explanation = None
-        # If Gemini supports returning thinking text in parts with a specific role/key, capture it here.
-        # Currently, thinking content is often hidden or handled differently. 
-        # We leave explanation=None for now unless capture_thinking is True and we find a way.
+        usage = response.usage_metadata
+        p_tokens = usage.prompt_token_count
+        c_tokens = usage.candidates_token_count
+        # thoughts = usage.get("thoughtsTokenCount", 0) # SDK object might have different struct, verify if needed.
+        # For now, standard usage object usually sums them or has them.
         
-    except (KeyError, IndexError) as e:
+    except (KeyError, AttributeError, IndexError) as e:
         raise RuntimeError(f"Failed to parse Gemini response: {e} - Raw: {response}")
+
+    if not return_strategy:
+        return ModelResponse(
+            text=text,
+            prompt_tokens=p_tokens,
+            cached_tokens=0,
+            completion_tokens=c_tokens,
+            strategy=None,
+        )
+
+    # STEP 2: Explain (Strategy Extraction)
+    step2_input = "Explain the strategy you used in broad terms such that it can be applied on other similar examples and other input data."
+    
+    if verbose:
+        print(f"--- REAL PROMPT STEP 2 (Gemini Explain) ---\n{step2_input}\n--- END REAL PROMPT STEP 2 ---", file=sys.stderr)
+
+    response2 = None
+    for attempt in range(max_retries):
+        try:
+            response2 = chat.send_message(step2_input)
+            break
+        except Exception as e:
+             print(f"Step 2 strategy extraction failed: {e}", file=sys.stderr)
+             return ModelResponse(
+                text=text,
+                prompt_tokens=p_tokens,
+                cached_tokens=0,
+                completion_tokens=c_tokens,
+                strategy=None,
+            )
+
+    # Manually extract Step 2 text
+    strategy_parts = []
+    if response2.candidates and response2.candidates[0].content and response2.candidates[0].content.parts:
+        for part in response2.candidates[0].content.parts:
+            if part.text:
+                strategy_parts.append(part.text)
+    strategy_text = "".join(strategy_parts).strip()
+    
+    # Accumulate Usage
+    usage2 = response2.usage_metadata
+    p_tokens += usage2.prompt_token_count
+    c_tokens += usage2.candidates_token_count
 
     return ModelResponse(
         text=text,
         prompt_tokens=p_tokens,
         cached_tokens=0,
         completion_tokens=c_tokens,
-        explanation=explanation,
+        strategy=strategy_text,
     )
 
 def call_model(
@@ -496,10 +501,7 @@ def call_model(
     google_client: genai.Client,
     prompt: str,
     model_arg: str,
-    response_format: str = "text",
-    capture_thinking: bool = False,
-    two_stage_explanation: bool = False,
-    two_stage_explanation_reversed: bool = False,
+    return_strategy: bool = False,
     verbose: bool = False,
 ) -> ModelResponse:
     provider, base_model, config = parse_model_arg(model_arg)
@@ -510,10 +512,7 @@ def call_model(
             prompt,
             base_model,
             config,
-            response_format,
-            capture_thinking=capture_thinking,
-            two_stage_explanation=two_stage_explanation,
-            two_stage_explanation_reversed=two_stage_explanation_reversed,
+            return_strategy=return_strategy,
             verbose=verbose,
         )
     elif provider == "anthropic":
@@ -524,8 +523,8 @@ def call_model(
             prompt,
             base_model,
             config,
-            response_format,
-            capture_thinking=capture_thinking,
+            return_strategy=return_strategy,
+            verbose=verbose,
         )
     elif provider == "google":
         if not google_client:
@@ -535,8 +534,8 @@ def call_model(
             prompt,
             base_model,
             config,
-            response_format,
-            capture_thinking=capture_thinking,
+            return_strategy=return_strategy,
+            verbose=verbose,
         )
 
     raise ValueError(f"Unknown provider {provider}")

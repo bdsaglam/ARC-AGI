@@ -10,6 +10,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import List
 
+import certifi
+os.environ["SSL_CERT_FILE"] = certifi.where()
+
 import httpx
 from openai import OpenAI
 from anthropic import Anthropic
@@ -28,8 +31,6 @@ from src.utils import (
     parse_grid_from_text,
     verify_prediction,
     GridFormat,
-    extract_json_answer,
-    extract_xml_answer,
 )
 
 
@@ -88,129 +89,128 @@ def parse_args() -> argparse.Namespace:
         help="Number of times to run the test suite.",
     )
     parser.add_argument(
-        "--response-format",
-        type=str,
-        default="text",
-        choices=["text", "json", "capture-internal-thinking", "two-stage-explanation", "two-stage-explanation-reversed"],
-        help="Format of the model response (text, json, capture-internal-thinking, two-stage-explanation, or two-stage-explanation-reversed).",
+        "--extract-strategy",
+        action="store_true",
+        help="Enable two-stage strategy extraction (Solve -> Explain).",
     )
     return parser.parse_args()
 
 
 def solve_task(
-    openai_client: OpenAI,
-    anthropic_client: Anthropic,
-    google_client: genai.Client,
+    openai_key: str | None,
+    claude_key: str | None,
+    google_key: str | None,
     task_path: Path,
     model_arg: str,
     grid_format_str: str,
     strategy: str = None,
     verbose: bool = False,
-    response_format: str = "text",
+    return_strategy: bool = False,
 ) -> List[ResultRecord]:
-    grid_format = GridFormat(grid_format_str)
-    task = load_task(task_path)
-    outcomes: List[ResultRecord] = []
-    for idx, test_example in enumerate(task.test, start=1):
-        # Format determination logic
-        effective_format = response_format
-        capture_thinking = False
-        two_stage_explanation = False
-        two_stage_explanation_reversed = False
+    # Create a thread-local HTTP client with insecure SSL and long timeouts
+    # to prevent connection errors and timeouts in threaded environments.
+    http_client = httpx.Client(
+        timeout=3600.0,
+        transport=httpx.HTTPTransport(retries=3, verify=False),
+        limits=httpx.Limits(keepalive_expiry=3600),
+        verify=False
+    )
+    
+    openai_client = OpenAI(api_key=openai_key, http_client=http_client) if openai_key else None
+    
+    anthropic_client = None
+    if claude_key:
+        anthropic_client = Anthropic(api_key=claude_key, http_client=http_client)
+        
+    google_client = None
+    if google_key:
+        google_client = genai.Client(api_key=google_key) # Gemini uses its own transport
 
-        if response_format == "capture-internal-thinking":
-            effective_format = "text"
-            capture_thinking = True
-        elif response_format == "two-stage-explanation":
-            effective_format = "text"
-            two_stage_explanation = True
-        elif response_format == "two-stage-explanation-reversed":
-            effective_format = "text"
-            two_stage_explanation_reversed = True
-
-        prompt = build_prompt(
-            task.train,
-            test_example,
-            grid_format=grid_format,
-            strategy=strategy,
-            response_format=effective_format,
-            suppress_final_instruction=two_stage_explanation_reversed,
-        )
-        if verbose:
-            print(f"--- PROMPT ---\n{prompt}\n--- END PROMPT ---", file=sys.stderr)
-        success = False
-        duration = 0.0
-        cost = 0.0
-        explanation = None
-        try:
-            start_time = time.perf_counter()
-            model_response = call_model(
-                openai_client,
-                anthropic_client,
-                google_client,
-                prompt,
-                model_arg,
-                response_format=effective_format,
-                capture_thinking=capture_thinking,
-                two_stage_explanation=two_stage_explanation,
-                two_stage_explanation_reversed=two_stage_explanation_reversed,
-                verbose=verbose,
+    try:
+        grid_format = GridFormat(grid_format_str)
+        task = load_task(task_path)
+        outcomes: List[ResultRecord] = []
+        for idx, test_example in enumerate(task.test, start=1):
+            prompt = build_prompt(
+                task.train,
+                test_example,
+                grid_format=grid_format,
+                strategy=strategy,
             )
-            if verbose:
-                if model_response.explanation:
+            
+            success = False
+            duration = 0.0
+            cost = 0.0
+            strategy_text = None
+            try:
+                start_time = time.perf_counter()
+                
+                # Ensure we have the client for the requested model
+                if model_arg.startswith("gpt") and not openai_client:
+                     raise RuntimeError("OpenAI API key missing.")
+                if "claude" in model_arg and not anthropic_client:
+                     raise RuntimeError("Anthropic API key missing.")
+                if "gemini" in model_arg and not google_client:
+                     raise RuntimeError("Google API key missing.")
+
+                model_response = call_model(
+                    openai_client,
+                    anthropic_client,
+                    google_client,
+                    prompt,
+                    model_arg,
+                    return_strategy=return_strategy,
+                    verbose=verbose,
+                )
+                if verbose:
+                    if model_response.strategy:
+                        print(
+                            f"--- STRATEGY ---\n{model_response.strategy}\n--- END STRATEGY ---",
+                            file=sys.stderr,
+                        )
                     print(
-                        f"--- INTERNAL THINKING ---\n{model_response.explanation}\n--- END INTERNAL THINKING ---",
+                        f"--- OUTPUT ---\n{model_response.text}\n--- END OUTPUT ---",
                         file=sys.stderr,
                     )
-                print(
-                    f"--- OUTPUT ---\n{model_response.text}\n--- END OUTPUT ---",
-                    file=sys.stderr,
+                duration = time.perf_counter() - start_time
+
+                _, base_model, _ = parse_model_arg(model_arg)
+                pricing = PRICING_PER_1M_TOKENS.get(
+                    base_model, {"input": 0, "cached_input": 0, "output": 0}
                 )
-            duration = time.perf_counter() - start_time
 
-            _, base_model, _ = parse_model_arg(model_arg)
-            pricing = PRICING_PER_1M_TOKENS.get(
-                base_model, {"input": 0, "cached_input": 0, "output": 0}
-            )
+                if (
+                    base_model == "gemini-3-pro-preview"
+                    and model_response.prompt_tokens > 200000
+                ):
+                    pricing = {"input": 4.00, "cached_input": 0.0, "output": 18.00}
 
-            if (
-                base_model == "gemini-3-pro-preview"
-                and model_response.prompt_tokens > 200000
-            ):
-                pricing = {"input": 4.00, "cached_input": 0.0, "output": 18.00}
-
-            non_cached_input = max(
-                0, model_response.prompt_tokens - model_response.cached_tokens
-            )
-
-            cost = (
-                (non_cached_input / 1_000_000 * pricing["input"])
-                + (
-                    model_response.cached_tokens
-                    / 1_000_000
-                    * pricing.get("cached_input", 0)
+                non_cached_input = max(
+                    0, model_response.prompt_tokens - model_response.cached_tokens
                 )
-                + (model_response.completion_tokens / 1_000_000 * pricing["output"])
-            )
 
-            grid_text = model_response.text
-            explanation = model_response.explanation
-            
-            if response_format == "json":
-                # We now use XML tags for structured output even when the flag is "json"
-                extracted_grid, extracted_explanation = extract_xml_answer(
-                    model_response.text
+                cost = (
+                    (non_cached_input / 1_000_000 * pricing["input"])
+                    + (
+                        model_response.cached_tokens
+                        / 1_000_000
+                        * pricing.get("cached_input", 0)
+                    )
+                    + (model_response.completion_tokens / 1_000_000 * pricing["output"])
                 )
-                if extracted_grid:
-                    grid_text = extracted_grid
-                explanation = extracted_explanation
 
-            predicted_grid = parse_grid_from_text(grid_text, fmt=grid_format)
-            success = verify_prediction(predicted_grid, test_example.output)
-        except Exception as exc:
-            print(f"Task {task_path} test {idx} failed: {exc}", file=sys.stderr)
-        outcomes.append((task_path, idx, success, model_arg, duration, cost, explanation))
-    return outcomes
+                grid_text = model_response.text
+                strategy_text = model_response.strategy
+                
+                predicted_grid = parse_grid_from_text(grid_text, fmt=grid_format)
+                success = verify_prediction(predicted_grid, test_example.output)
+            except Exception as exc:
+                print(f"Task {task_path} test {idx} failed: {type(exc)} {exc}", file=sys.stderr)
+            outcomes.append((task_path, idx, success, model_arg, duration, cost, strategy_text))
+        return outcomes
+    finally:
+        # Clean up the thread-local http client
+        http_client.close()
 
 
 def print_table_header() -> None:
@@ -227,7 +227,7 @@ def print_result_row(
     model_arg: str,
     duration: float,
     cost: float,
-    explanation: str | None,
+    strategy: str | None,
 ) -> None:
     column_key = get_column_name(model_arg)
 
@@ -254,24 +254,8 @@ def main() -> None:
     if not openai_key:
         raise RuntimeError("OPENAI_API_KEY environment variable is not set.")
     
-    # Configure HTTP client with TCP Keep-Alive to prevent idle timeouts (NAT/Firewall)
-    # during long reasoning tasks (up to 1 hour).
-    http_client = httpx.Client(
-        timeout=3600.0,
-        transport=httpx.HTTPTransport(retries=3),
-        limits=httpx.Limits(keepalive_expiry=3600)
-    )
-    openai_client = OpenAI(api_key=openai_key, http_client=http_client)
-
     claude_key = os.getenv("ANTHROPIC_API_KEY") or os.getenv("CLAUDE_API_KEY")
-    anthropic_client = None
-    if claude_key:
-        anthropic_client = Anthropic(api_key=claude_key)
-
     google_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-    google_client = None
-    if google_key:
-        google_client = genai.Client(api_key=google_key)
 
     task_source = args.task_source
     if task_source.endswith(".json"):
@@ -317,15 +301,15 @@ def main() -> None:
             for path in task_paths:
                 future = executor.submit(
                     solve_task,
-                    openai_client,
-                    anthropic_client,
-                    google_client,
+                    openai_key,
+                    claude_key,
+                    google_key,
                     path,
                     args.model,
                     args.grid_format,
                     args.strategy,
                     args.verbose,
-                    args.response_format,
+                    return_strategy=args.extract_strategy,
                 )
                 future_to_path[future] = path
 
@@ -381,7 +365,7 @@ def main() -> None:
                     "status": "PASS" if r[2] else "FAIL",
                     "time": r[4],
                     "cost": r[5],
-                    "explanation": r[6],
+                    "strategy": r[6],
                 }
             )
 
