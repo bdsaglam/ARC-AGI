@@ -35,18 +35,16 @@ It seems that didn't help at all. This surprises me.
 
 Below is the distribution of test cases for all the data:
 
-┌──────────────┬───────┬────────────┐
-│ Num Examples │ Count │ Percentage │
-├──────────────┼───────┼────────────┤
-│ 2            │ 158   │ 15.80%     │
-│ 3            │ 575   │ 57.50%     │
-│ 4            │ 189   │ 18.90%     │
-│ 5            │ 49    │ 4.90%      │
-│ 6            │ 18    │ 1.80%      │
-│ 7            │ 8     │ 0.80%      │
-│ 8            │ 2     │ 0.20%      │
-│ 10           │ 1     │ 0.10%      │
-└──────────────┴───────┴────────────┘
+| Num Examples | Count | Percentage |
+|--------------|-------|------------|
+| 2            | 158   | 15.80%     |
+| 3            | 575   | 57.50%     |
+| 4            | 189   | 18.90%     |
+| 5            | 49    | 4.90%      |
+| 6            | 18    | 1.80%      |
+| 7            | 8     | 0.80%      |
+| 8            | 2     | 0.20%      |
+| 10           | 1     | 0.10%      |
 
 There is a lot of test cases with only two examples. And the bulk has three examples. Let me instead change the logic to this:
 - All test cases need to pass
@@ -73,10 +71,12 @@ Pseudo code implementation:
                * If either example fails to reach 2 successes within the allowed margin, the entire
                  verification fails.
 ```
+
 Run 1:
 Pass Rate: 86.00% (86/100)
 Verified Rate: 40.00% (40/100)
 Verified but Failed: 2 (0d3d703e, 0d3d703e)
+
 Run 2:
 Pass Rate: 88.00% (88/100)
 Verified Rate: 48.00% (48/100)
