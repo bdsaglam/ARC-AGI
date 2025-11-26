@@ -30,7 +30,6 @@ from src.tasks import load_task, load_task_paths, build_prompt
 from src.utils import (
     parse_grid_from_text,
     verify_prediction,
-    GridFormat,
 )
 
 
@@ -65,13 +64,6 @@ def parse_args() -> argparse.Namespace:
         help="Number of parallel worker threads (default: 20).",
     )
     parser.add_argument(
-        "--grid-format",
-        type=str,
-        default="csv",
-        choices=[f.value for f in GridFormat],
-        help="Format for grid representation.",
-    )
-    parser.add_argument(
         "--strategy",
         type=str,
         default=None,
@@ -102,7 +94,6 @@ def solve_task(
     google_key: str | None,
     task_path: Path,
     model_arg: str,
-    grid_format_str: str,
     strategy: str = None,
     verbose: bool = False,
     return_strategy: bool = False,
@@ -127,14 +118,12 @@ def solve_task(
         google_client = genai.Client(api_key=google_key) # Gemini uses its own transport
 
     try:
-        grid_format = GridFormat(grid_format_str)
         task = load_task(task_path)
         outcomes: List[ResultRecord] = []
         for idx, test_example in enumerate(task.test, start=1):
             prompt = build_prompt(
                 task.train,
                 test_example,
-                grid_format=grid_format,
                 strategy=strategy,
             )
             
@@ -174,7 +163,8 @@ def solve_task(
                     )
                 duration = time.perf_counter() - start_time
 
-                _, base_model, _ = parse_model_arg(model_arg)
+                model_config = parse_model_arg(model_arg)
+                base_model = model_config.base_model
                 pricing = PRICING_PER_1M_TOKENS.get(
                     base_model, {"input": 0, "cached_input": 0, "output": 0}
                 )
@@ -202,7 +192,7 @@ def solve_task(
                 grid_text = model_response.text
                 strategy_text = model_response.strategy
                 
-                predicted_grid = parse_grid_from_text(grid_text, fmt=grid_format)
+                predicted_grid = parse_grid_from_text(grid_text)
                 success = verify_prediction(predicted_grid, test_example.output)
             except Exception as exc:
                 print(f"Task {task_path} test {idx} failed: {type(exc)} {exc}", file=sys.stderr)
@@ -306,7 +296,6 @@ def main() -> None:
                     google_key,
                     path,
                     args.model,
-                    args.grid_format,
                     args.strategy,
                     args.verbose,
                     return_strategy=args.extract_strategy,
@@ -351,7 +340,7 @@ def main() -> None:
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         # dataset_name variable is already set above
         log_filename = (
-            f"{timestamp}_{args.model}_{args.grid_format}_{dataset_name}.json"
+            f"{timestamp}_{args.model}_csv_{dataset_name}.json"
         )
         log_path = log_dir / log_filename
 

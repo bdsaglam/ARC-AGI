@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Iterable
 
-from src.utils import Grid, format_grid, GridFormat
+from src.utils import Grid, format_grid
 
 @dataclass
 class Example:
@@ -25,12 +25,13 @@ def load_task(json_path: Path) -> Task:
 
 def load_task_paths(list_path: Path) -> List[Path]:
     payload = json.loads(list_path.read_text())
-    if isinstance(payload, dict):
-        tasks = payload.get("tasks")
-    else:
-        tasks = payload
-    if not isinstance(tasks, Iterable):
-        raise ValueError(f"Task list in {list_path} must be a list.")
+    if not isinstance(payload, dict) or "tasks" not in payload:
+        raise ValueError(f"Task list in {list_path} must be a dict with a 'tasks' key.")
+    
+    tasks = payload["tasks"]
+    if not isinstance(tasks, list):
+        raise ValueError(f"The 'tasks' value in {list_path} must be a list.")
+
     result = []
     for item in tasks:
         if not isinstance(item, str):
@@ -41,9 +42,7 @@ def load_task_paths(list_path: Path) -> List[Path]:
 def build_prompt(
     train_examples: List[Example],
     test_example: Example,
-    grid_format: GridFormat = GridFormat.STANDARD,
     strategy: str = None,
-    response_format: str = "text",
     suppress_final_instruction: bool = False,
 ) -> str:
     lines = [
@@ -61,27 +60,17 @@ def build_prompt(
     for idx, ex in enumerate(train_examples, start=1):
         lines.append(f"Example {idx}:")
         lines.append("input:")
-        lines.append(format_grid(ex.input, fmt=grid_format))
+        lines.append(format_grid(ex.input))
         lines.append("output:")
-        lines.append(format_grid(ex.output, fmt=grid_format))
+        lines.append(format_grid(ex.output))
         lines.append("")
     lines.append("Test input:")
-    lines.append(format_grid(test_example.input, fmt=grid_format))
+    lines.append(format_grid(test_example.input))
     lines.append("")
 
     if suppress_final_instruction:
         return "\n".join(lines)
 
-    if response_format == "json":
-        # Legacy/XML envelope mode if user still wants single-pass structured
-        lines.append("Respond precisely in this format:")
-        lines.append("<explanation>")
-        lines.append("(Your brief explanation of the strategy)")
-        lines.append("</explanation>")
-        lines.append("<grid>")
-        lines.append("(The completed output grid)")
-        lines.append("</grid>")
-    else:
-        lines.append("Respond with ONLY the completed output grid.")
+    lines.append("Respond with ONLY the completed output grid.")
 
     return "\n".join(lines)
