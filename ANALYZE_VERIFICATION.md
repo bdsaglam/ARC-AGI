@@ -73,10 +73,14 @@ Pseudo code implementation:
                * If either example fails to reach 2 successes within the allowed margin, the entire
                  verification fails.
 ```
-
+Run 1:
 Pass Rate: 86.00% (86/100)
 Verified Rate: 40.00% (40/100)
 Verified but Failed: 2 (0d3d703e, 0d3d703e)
+Run 2:
+Pass Rate: 88.00% (88/100)
+Verified Rate: 48.00% (48/100)
+Verified but Failed: 3 (017c7c7b, 08ed6ac7, 017c7c7b)
 
 This barely improved the (correct) verification rate, and introduced significant failures
 
