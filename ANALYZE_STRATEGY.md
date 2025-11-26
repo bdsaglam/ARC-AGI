@@ -389,9 +389,9 @@ Finally, from all cells that belong to these extended constant segments:
 
 This turns the constant segments into the larger triangles/diamonds of 6s, 7s, 9s, 4s you see in the examples.
 ```
-Pass rate: X/10
+Pass rate: 3/10
 
 Strategy: `Extend diagonally for the main line. Then for the rest, fill their area.`
-Pass rate: X/10
+Pass rate: 1/10
 
 
