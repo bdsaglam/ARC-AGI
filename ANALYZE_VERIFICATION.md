@@ -20,16 +20,16 @@ I've constructed a set of ten problems that I'll use to evaluate the accuracy of
 The prompt used to generate the strategy is: `Explain the strategy you used in broad terms such that it can be applied on other similar examples and other input data.`
 
 Result from running the ten tasks about through ten iterations:
-Pass Rate: 88.00% (88/100)
-Verified Rate: 38.00% (38/100)
-Verified but Failed: 1
+- Pass Rate: 88.00% (88/100)
+- Verified Rate: 38.00% (38/100)
+- Verified but Failed: 1
 
 The verified but failed is 08ed6ac7, which only has two test cases and thereby susceptible to verification misalignment.
 
 It seems that verifications are often failing despite the problem actually passing. I'll try relaxing the passing logic to "all test cases or at least three test cases passing":
-Pass Rate: 87.00% (87/100)
-Verified Rate: 38.00% (38/100)
-Verified but Failed: 0
+- Pass Rate: 87.00% (87/100)
+- Verified Rate: 38.00% (38/100)
+- Verified but Failed: 0
 
 It seems that didn't help at all. This surprises me.
 
