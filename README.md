@@ -64,7 +64,7 @@ An example task list (`data/first_100.json`) looks like:
 ### Strategy Extraction
 [Strategy Extraction Analysis](ANALYZE_STRATEGY_EXTRACTION.md)
 
-In order to refine the results we need to introduce a concept of "strategy" (or explanation) of why the model has chosen to come to a certain answer/conclusion. This "strategy" works like a guide that can be applied to other test cases thereby enabling us to validate responses, either through testing it on the supplied test data or on synthetic data.
+In order to refine the results we need to introduce a concept of "strategy" (or explanation) of why the model has chosen to come to a certain answer/conclusion. This "strategy" works like a guide that can be applied to other test cases thereby enabling us to validate responses, either through testing it on the supplied test data or on synthetic data. Or even by building up a library of strategies from solved problems, generalizing them and mapping them to identifyable traits of problems to supply strategies at solution time for unknown problems.
 
 I tested several approaches of getting a "strategy" out of the model. Many had an actual performance implication by affecting the reasoning, through a distraction or deterioration of the spacial reasoning. In the end, the best proved to be a two stage prompt approach where the first stage outputs the solution, and a second stage outputs the strategy with as much context as possible retained from the first step (same session id, etc).
 
@@ -72,6 +72,9 @@ I tested several approaches of getting a "strategy" out of the model. Many had a
 [Strategy Usage Analysis](ANALYZE_STRATEGY.md)
 
 gpt-5.1-none is pretty much unable of following a strategy, so this will only work for better models.
+
 gpt-5.1-low can reasonably well follow at least a simple strategy if explicit and specific to the problem. When this is the case, it can be lifted to "medium" level. It can't however follow "hints" that are more general
+
 gpt-5.1-medium is very good with explicit strategies that are unique to the problem and is easily lifted to "high" performance if not more. It also can consume generic advice but it likely has to be at least somewhat relevant to the problem.
+
 gpt-5.1-high is already very high performant but with and explicit strategy problems that it previously couldn't solve become solvable. This suggests that the model isn't failing because it has some inherit inabilities (e.g. certain transforms not possible). It likely can also make previously unsolvable problem solvable simply by hints, but the specificity required of these hints requires further research.
