@@ -123,9 +123,34 @@ Looking at the strategys they are wrong, and sort of by mistake still gets the a
 Also, 94% precision is one way of viewing this. Looking at the sample though, there are only 12-16 failing tasks, out of which 3 are being marked as "verified". That's 20% of the problems being marked as verified when they actually were wrong. We need to run this on a representative data sample to see how bad it actually is
 
 gpt-5.1-none on first 100:
-
+- Pass Rate: 9.62% (20/208)
+- Verified Rate: 2.88% (6/208)
+- Verified but Failed: 0
 
 gpt-5.1-low on first 100:
+- Pass Rate: 38.46% (40/104)
+- Verified Rate: 13.46% (14/104)
+- Verified but Failed: 2 (05269061, 195ba7dc)
+
+This is really not looking great. There are too many "verified but failed". One pattern I see is the training examples being explicitly explained in the strategy, which of course leads to this. I've fixed this by updating the prompt to `Explain the strategy you used in broad terms such that it can be applied on other similar examples and other input data.` but I still feel this isn't as robust as I need it to be. Having false positives slip through this verification will significantly hurt the overall results.
+
+Idea: Run the solutions twice with strategy retrieval. If they do not output the same grid, then verification failed (and the actual answer). If both succeed, we do backtesting through the training examples using the first of the strategies (don't want to do another call to merge them).
+
+gpt-5.1-none on top 10:
+- Pass Rate: 89.00% (89/100)
+- Verified Rate: 24.00% (24/100)
+- Verified but Failed: 0
+
+gpt-5.1-low on top 10 (low_top_10_low_vs_non):
+- Pass Rate: 90.00% (9/10)
+- Verified Rate: 50.00% (5/10)
+- Verified but Failed: 0
+
+TODO: I really should instead train a model to predict the likelihood of there being a true PASS based on the data supplied (testing from different models, multiple tests, backtesting, etc).
+
+Either way, I'm going to assume that the current approach with two matching runs plus backtesting raises the precision sufficiently high to not harm things.
+
+
 
 
 
