@@ -112,15 +112,7 @@ The problems below are "easy for low" but "hard for none":
 ```
 
 The results from running on these are:
-
-
-
-
-
-# gpt-5.1-low
-
-https://arcprize.org/play?task=025d127b
-It has only two training examples, and I ended up with verification=pass but problem=fail
-=> Need to only trust verification when there are many training examples, or I need to generate synthetic training data
-
+- Pass Rate: 85.00% (85/100)
+- Verified Rate: 30.00% (30/100)
+- Verified but Failed: 2 (178fcbfb, 1f642eb9)
 
