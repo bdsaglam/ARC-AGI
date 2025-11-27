@@ -116,3 +116,16 @@ The results from running on these are:
 - Verified Rate: 30.00% (30/100)
 - Verified but Failed: 2 (178fcbfb, 1f642eb9)
 
+Same problem also on low. I need to understand what's wrong with the "strategy" for these problems.
+
+Looking at the strategys they are wrong, and sort of by mistake still gets the answer right. It's hard to understand why. I think it's just that if you throw enough data at these models, they'll randomly get it right sometimes even with bad instructions. Not sure it'll be possible to raise the precision above the current ~94%.
+
+Also, 94% precision is one way of viewing this. Looking at the sample though, there are only 12-16 failing tasks, out of which 3 are being marked as "verified". That's 20% of the problems being marked as verified when they actually were wrong. We need to run this on a representative data sample to see how bad it actually is
+
+gpt-5.1-none on first 100:
+
+
+gpt-5.1-low on first 100:
+
+
+
