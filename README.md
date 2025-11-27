@@ -78,3 +78,12 @@ gpt-5.1-low can reasonably well follow at least a simple strategy if explicit an
 gpt-5.1-medium is very good with explicit strategies that are unique to the problem and is easily lifted to "high" performance if not more. It also can consume generic advice but it likely has to be at least somewhat relevant to the problem.
 
 gpt-5.1-high is already very high performant but with and explicit strategy problems that it previously couldn't solve become solvable. This suggests that the model isn't failing because it has some inherit inabilities (e.g. certain transforms not possible). It likely can also make previously unsolvable problem solvable simply by hints, but the specificity required of these hints requires further research.
+
+### Answer Verification
+[Answer Verification Analysis](ANALYZE_VERIFICATION.md)
+
+A key thing to devising the overall approach to solving the problems is to know when the problem has been solved, and ideally do so with high confidence. To do this, I've attempted an approach of replaying test cases with synthetic data expansion selectively. I've done this tuning for precision (e.g. avoiding falsely verifying answer that turn out to be wrong).
+
+When saying something is verified it truly is correct ~94% of the time (precision) on problems that reasonably could be truly solved, while falsely setting them as not verified when they actually were true ~50% of the time (1-recall). On the full sample though, the precision is closer to 90-100%, but the recall drops downwards of 25-30%.
+
+To ensure the precision truly approaches 100% I'm going to add in that the solution needs to be run twice with matching grids together with a perfect score on the test data with synthetic expansion. Later on I'll train a model to actually predict the likelihood of a true PASS based on all the testing done up to then.
