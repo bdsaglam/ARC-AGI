@@ -1,5 +1,5 @@
 # Python dependencies for ARC-AGI
 openai>=1.35.7
 anthropic>=0.3.0
-google-genai>=0.1.0
+google-genai>=1.52.0
 urllib3<2

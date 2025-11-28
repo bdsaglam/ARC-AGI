@@ -1,4 +1,5 @@
 import sys
+import warnings
 from typing import Optional
 
 from google import genai
@@ -34,18 +35,32 @@ def call_gemini(
             or "incomplete chunked read" in err_str.lower()
         )
 
-    level_enum = types.ThinkingLevel.LOW if thinking_level == "low" else types.ThinkingLevel.HIGH
+    # Use thinking_level with string literals "LOW" or "HIGH" (case insensitive usually, but standard is upper/lower matching the enum)
+    # Typically the SDK accepts "low" / "high" strings for this field if typed as ThinkingLevel
+    level_val = "low" if thinking_level == "low" else "high"
+    
     gen_config = types.GenerateContentConfig(
         temperature=1.0,
         max_output_tokens=65536,
-        thinking_config={"include_thoughts": True, "thinking_level": level_enum}
+        thinking_config=types.ThinkingConfig(
+            include_thoughts=True, 
+            thinking_level=level_val
+        )
     )
 
     # Shared chat object for state
     chat = client.chats.create(model=model, config=gen_config)
 
+    def _run_chat(message):
+        # Suppress Pydantic serialization warnings from the SDK
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning, message=".*Pydantic serializer warnings.*")
+            return chat.send_message(message)
+
     def _solve(p: str) -> ModelResponse:
-        response = run_with_retry(lambda: chat.send_message(p), _should_retry)
+        # Construct explicit Part object to avoid Pydantic warnings and ValueErrors
+        message = types.Part(text=p)
+        response = run_with_retry(lambda: _run_chat(message), _should_retry)
         
         try:
             text_parts = []
@@ -66,7 +81,8 @@ def call_gemini(
     def _explain(p: str, prev_resp: ModelResponse) -> Optional[ModelResponse]:
         try:
             # Chat object maintains history automatically
-            response = run_with_retry(lambda: chat.send_message(p), _should_retry)
+            message = types.Part(text=p)
+            response = run_with_retry(lambda: _run_chat(message), _should_retry)
             
             text_parts = []
             if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
@@ -83,5 +99,7 @@ def call_gemini(
         except Exception as e:
             logger.error(f"Step 2 strategy extraction failed: {e}")
             return None
+
+    return orchestrate_two_stage(_solve, _explain, prompt, return_strategy, verbose)
 
     return orchestrate_two_stage(_solve, _explain, prompt, return_strategy, verbose)
