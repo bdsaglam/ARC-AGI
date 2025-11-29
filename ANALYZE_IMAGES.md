@@ -31,6 +31,16 @@ The models does some reasoning better based on images. Therefore we should eithe
 
 <img width="720" height="1044" alt="8f3a5a89_with_test_precise" src="https://github.com/user-attachments/assets/f8d37002-5312-46b7-82b4-8b578785365d" />
 
+## 332f06d7 example images
+
+
+<img width="432" height="216" alt="332f06d7_first_pair_cartoon" src="https://github.com/user-attachments/assets/594d5ba2-39b2-48e3-a53a-2566b37cc2a8" />
+<img width="432" height="216" alt="332f06d7_first_pair_precise" src="https://github.com/user-attachments/assets/f90f309f-8d6f-42ed-9924-e0aca971b1c8" />
+<img width="720" height="1296" alt="332f06d7_with_test_cartoon" src="https://github.com/user-attachments/assets/f077e653-ea75-4b7d-afa5-4adadeff82ad" />
+<img width="720" height="1296" alt="332f06d7_with_test_precise" src="https://github.com/user-attachments/assets/a171167e-9d30-49cd-bbc6-43f46ee6b87d" />
+
+
+
 
 # Performance - single multimodal prompt
 
