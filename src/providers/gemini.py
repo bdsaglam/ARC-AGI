@@ -1,6 +1,7 @@
 import sys
 import warnings
 from typing import Optional
+import PIL.Image
 
 from google import genai
 from google.genai import types
@@ -15,6 +16,7 @@ def call_gemini(
     client: genai.Client,
     prompt: str,
     config: ModelConfig,
+    image_path: str = None,
     return_strategy: bool = False,
     verbose: bool = False,
 ) -> ModelResponse:
@@ -59,7 +61,11 @@ def call_gemini(
 
     def _solve(p: str) -> ModelResponse:
         # Pass raw string to avoid Pydantic warnings; SDK handles wrapping
-        message = p
+        message = [p]
+        if image_path:
+            img = PIL.Image.open(image_path)
+            message.append(img)
+
         response = run_with_retry(lambda: _run_chat(message), _should_retry)
         
         try:
@@ -100,6 +106,4 @@ def call_gemini(
             logger.error(f"Step 2 strategy extraction failed: {e}")
             return None
 
-    return orchestrate_two_stage(_solve, _explain, prompt, return_strategy, verbose)
-
-    return orchestrate_two_stage(_solve, _explain, prompt, return_strategy, verbose)
+    return orchestrate_two_stage(_solve, _explain, prompt, return_strategy, verbose, image_path)

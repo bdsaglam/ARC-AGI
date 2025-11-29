@@ -1,4 +1,6 @@
 import sys
+import base64
+import mimetypes
 from typing import Union, Optional
 
 from anthropic import Anthropic
@@ -13,6 +15,7 @@ def call_anthropic(
     client: Anthropic,
     prompt: str,
     config: ModelConfig,
+    image_path: str = None,
     return_strategy: bool = False,
     verbose: bool = False,
 ) -> ModelResponse:
@@ -47,8 +50,25 @@ def call_anthropic(
         kwargs["max_tokens"] = max_tokens
 
     def _solve(p: str) -> ModelResponse:
+        content = []
+        if image_path:
+            with open(image_path, "rb") as image_file:
+                base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+            mime_type, _ = mimetypes.guess_type(image_path)
+            if mime_type is None:
+                mime_type = 'application/octet-stream'
+            content.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": mime_type,
+                    "data": base64_image,
+                },
+            })
+        content.append({"type": "text", "text": p})
+        
         kw = kwargs.copy()
-        kw["messages"] = [{"role": "user", "content": p}]
+        kw["messages"] = [{"role": "user", "content": content}]
         
         def _run():
             with client.messages.stream(**kw) as stream:
@@ -102,4 +122,4 @@ def call_anthropic(
             logger.error(f"Step 2 strategy extraction failed: {e}")
             return None
 
-    return orchestrate_two_stage(_solve, _explain, prompt, return_strategy, verbose)
+    return orchestrate_two_stage(_solve, _explain, prompt, return_strategy, verbose, image_path)

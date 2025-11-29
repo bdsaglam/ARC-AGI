@@ -31,7 +31,8 @@ def orchestrate_two_stage(
     explain_func: Callable[[str, ModelResponse], Optional[ModelResponse]],
     prompt: str,
     return_strategy: bool,
-    verbose: bool
+    verbose: bool,
+    image_path: str = None,
 ) -> ModelResponse:
     """
     Orchestrates the Solve -> Explain workflow.
@@ -40,6 +41,8 @@ def orchestrate_two_stage(
     if verbose:
         # We use DEBUG level for prompt dumps, requiring verbose=True in main setup
         logger.debug(f"--- REAL PROMPT STEP 1 (Solve) ---\n{prompt}\n--- END REAL PROMPT STEP 1 ---")
+        if image_path:
+            logger.debug(f"--- IMAGE PROMPT STEP 1 (Solve) ---\n{image_path}\n--- END IMAGE PROMPT STEP 1 ---")
     
     response1 = solve_func(prompt)
     

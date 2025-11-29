@@ -43,6 +43,7 @@ def build_prompt(
     train_examples: List[Example],
     test_example: Example,
     strategy: str = None,
+    image_path: str = None,
     trigger_deep_thinking: bool = False,
 ) -> str:
     lines = [
@@ -50,6 +51,9 @@ def build_prompt(
     ]
     if strategy:
         lines.append(f"Suggested Strategy: {strategy}")
+    
+    if image_path:
+        lines.append("Attached you'll also find an image representing the example input/output pairs.")
 
     lines.append("Each grid cell is an integer 0-9 representing a color.")
     lines.append(

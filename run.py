@@ -68,7 +68,7 @@ def find_task_path(task_id: str) -> Path:
     
     raise FileNotFoundError(f"Task file for '{task_id}' not found in data/arc-agi-2-evaluation/.")
 
-def run_single_model(model_name, prompt, test_example, openai_client, anthropic_client, google_client, verbose):
+def run_single_model(model_name, prompt, test_example, openai_client, anthropic_client, google_client, verbose, image_path=None):
     """
     Helper function to run a single model and return result data.
     Verbose logs are printed only if verbose=True.
@@ -77,6 +77,8 @@ def run_single_model(model_name, prompt, test_example, openai_client, anthropic_
     prefix = f"[{model_name}]"
     if verbose:
         print(f"{prefix} Initiating call...")
+        if image_path:
+            print(f"{prefix} Including image: {image_path}")
 
     cost = 0.0
     duration = 0.0
@@ -89,6 +91,7 @@ def run_single_model(model_name, prompt, test_example, openai_client, anthropic_
             google_client=google_client,
             prompt=prompt,
             model_arg=model_name,
+            image_path=image_path,
             return_strategy=False,
             verbose=verbose
         )
@@ -167,6 +170,7 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     parser.add_argument("--models", type=str, help="Comma-separated list of models to run")
     parser.add_argument("--hint", type=str, default=None, help="Optional hint to provide to the model")
+    parser.add_argument("--image", type=str, default=None, help="Path to an image to include in the prompt.")
     parser.add_argument("--trigger-deep-thinking", action="store_true", help="Append a deep thinking procedure to the prompt.")
     
     args = parser.parse_args()
@@ -237,7 +241,7 @@ def main():
     test_example = task.test[test_idx]
 
     # Build Prompt
-    prompt = build_prompt(task.train, test_example, strategy=args.hint, trigger_deep_thinking=args.trigger_deep_thinking)
+    prompt = build_prompt(task.train, test_example, strategy=args.hint, image_path=args.image, trigger_deep_thinking=args.trigger_deep_thinking)
 
     total_calls = len(models_to_run)
     print(f"Starting parallel execution for {total_calls} models...")
@@ -261,7 +265,8 @@ def main():
                 openai_client,
                 anthropic_client,
                 google_client,
-                args.verbose
+                args.verbose,
+                args.image,
             )
             future_to_model[future] = model_name
         

@@ -89,6 +89,7 @@ def call_model(
     google_client: genai.Client,
     prompt: str,
     model_arg: str,
+    image_path: str = None,
     return_strategy: bool = False,
     verbose: bool = False,
 ) -> ModelResponse:
@@ -99,6 +100,7 @@ def call_model(
             openai_client,
             prompt,
             config,
+            image_path=image_path,
             return_strategy=return_strategy,
             verbose=verbose,
         )
@@ -109,6 +111,7 @@ def call_model(
             anthropic_client,
             prompt,
             config,
+            image_path=image_path,
             return_strategy=return_strategy,
             verbose=verbose,
         )
@@ -119,6 +122,7 @@ def call_model(
             google_client,
             prompt,
             config,
+            image_path=image_path,
             return_strategy=return_strategy,
             verbose=verbose,
         )

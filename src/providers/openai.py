@@ -1,4 +1,6 @@
 import sys
+import base64
+import mimetypes
 from typing import Optional
 
 from openai import OpenAI
@@ -13,6 +15,7 @@ def call_openai_internal(
     client: OpenAI,
     prompt: str,
     config: ModelConfig,
+    image_path: str = None,
     return_strategy: bool = False,
     verbose: bool = False,
 ) -> ModelResponse:
@@ -36,9 +39,21 @@ def call_openai_internal(
         )
 
     def _solve(p: str) -> ModelResponse:
+        content = [{"type": "input_text", "text": p}]
+        if image_path:
+            with open(image_path, "rb") as image_file:
+                base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+            mime_type, _ = mimetypes.guess_type(image_path)
+            if mime_type is None:
+                mime_type = 'application/octet-stream'
+            content.append({
+                "type": "input_image",
+                "image_url": f"data:{mime_type};base64,{base64_image}",
+            })
+
         kwargs = {
             "model": model,
-            "input": [{"role": "user", "content": p}],
+            "input": [{"role": "user", "content": content}],
             "timeout": 3600,
         }
         if reasoning_effort != "none":
@@ -97,4 +112,4 @@ def call_openai_internal(
             logger.error(f"Step 2 strategy extraction failed: {e}")
             return None
 
-    return orchestrate_two_stage(_solve, _explain, prompt, return_strategy, verbose)
+    return orchestrate_two_stage(_solve, _explain, prompt, return_strategy, verbose, image_path)
