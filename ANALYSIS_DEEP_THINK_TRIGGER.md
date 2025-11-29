@@ -89,3 +89,11 @@ However, it seems to not yield any additional thinking:
 | 12 | gpt-5.1-high                    | 0.4713       | 665.07       | 0.4101    | 573.22    |
 | 13 | gpt-5.1-high                    | 0.4182       | 595.06       | 0.2968    | 411.37    |
 | 14 | gpt-5.1-high                    | 0.4879       | 671.53       | 0.4034    | 562.55    |
+
+# Total Cost & Time per Problem (Summed)
+
+| Problem ID | Cost (No DT) | Time (No DT) | Cost (DT) | Time (DT) |
+|-----------|---------------|--------------|-----------|-----------|
+| dfadab01  | 5.4505        | 4970.41 s    | 5.7186    | 4435.39 s |
+| 332f06d7  | 5.3084        | 5253.96 s    | 6.6307    | 5238.57 s |
+| 64efde09  | 7.8349        | 6610.32 s    | 7.4209    | 6090.13 s |
