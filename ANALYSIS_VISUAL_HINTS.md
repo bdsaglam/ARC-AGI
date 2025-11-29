@@ -1,6 +1,6 @@
 # dfadab01
 
-Without any hint (at highest thinking): Failed
+Without any hint (at highest thinking): <font color="red">Failed</font>
 
 Explicit solution:
 ```
@@ -9,16 +9,16 @@ Explicit solution:
 - If a shape is present in the input together with its corresponding dot in the bottom right corner, the shape and the corresponding dot is removed from the output
 - Note: In example 2 in the bottom right, there is both a shape with its corresponding dot, as well as a #3 dot, therefore the shape is first removed and then added back
 ```
-Result: Solved (solid)
+Result: <font color="green">Solved</font> (solid)
 
 Condensed solution: `Each marker symbol generates its corresponding shape unless that shape already appears with its confirming marker (e.g., bottom-right), in which case the shape and marker are removed before applying any remaining marker-to-shape expansions.`
 
-Result: Solved (solid)
+Result: <font color="green">Solved</font> (solid)
 
 
 # 332f06d7
 
-Without any hint (at highest thinking): Failed
+Without any hint (at highest thinking): <font color="red">Failed</font>
 
 Explicit solution:
 ```
@@ -26,15 +26,15 @@ Explicit solution:
 - #0 is a boat that is trying to float through the water to its destination #2
 - The task is to move the boat through the water all the way to #2 or where it gets stuck because the water is too tight to fit the boat
 ```
-Result: Solved (Luck?)
+Result: <font color="green">Solved</font> (Luck?)
 
 Condensed solution: `The boat (#0) must travel through water (#1) across the land–water grid (#3 = land) toward its destination (#2), moving as far as possible until either reaching #2 or becoming stuck when the water path is too narrow.
 
-Result: Failed (solution there, but picked wrong answer)
+Result: <font color="red">Failed</font> (solution there, but picked wrong answer)
 
 # 67e490f4
 
-Without any hint (at highest thinking): Failed
+Without any hint (at highest thinking): <font color="red">Failed</font>
 
 Explicit solution:
 ```
@@ -42,17 +42,17 @@ Explicit solution:
 - In the carve out there are gaps. These gaps are to be filled by the other small objects
 - If there are multiple objects of different color that fits into a hole (possibly after rotating the object). Then the object (after rotation) that is the most frequent is the one to use. For example, in example 1 there are 2 #9 2x1 lines but only 1 #2 2x1 line, therefore the #9 colored 2x1 line is the one to use to fill all 2x1 holes
 ```
-Result: Solved (solid)
+Result: <font color="green">Solved</font> (solid)
 
 Condensed solution: `A large holed rectangle becomes the output, with each gap filled by the small object shape that fits it—possibly after rotation—using the most frequent matching object color when multiple candidates fit.`
 
-Result: Failed (no solution present)
+Result: <font color="red">Failed</font> (no solution present)
 
 
 
 # aa4ec2a5
 
-Without any hint (at highest thinking): Failed
+Without any hint (at highest thinking): <font color="red">Failed</font>
 
 Explicit solution:
 ```
@@ -60,14 +60,14 @@ Explicit solution:
 - All objects should have a #2 border added around them
 - Any object with a hole in them should have their interior color changed from #1 to #8, and the hole should be changed from #4 to #6
 ```
-Result: Failed (no solution present)
+Result: <font color="red">Failed</font> (no solution present)
 
 This is weird. The exact same prompt yields the right solution by ChatGPT 5.1 Pro in 9m49s. Gemini 3 (without deep think) fails, whereas Gemini 3 with Deep Think does solve it.
 
 
 # dbff022c
 
-Without any hint (at highest thinking): Failed
+Without any hint (at highest thinking): <font color="red">Failed</font>
 
 Explicit solution:
 ```
@@ -76,15 +76,15 @@ Explicit solution:
 - The legend decides how the objects holes are colored
 - In the legend, the color closest to the border is used to identify the object, and the corresponding color that sits one square away from the border decides what color to use inside the corresponding objects holes
 ```
-Result: Solved (solid)
+Result: <font color="green">Solved</font> (solid)
 
 Condensed solution: `A 2×X edge legend maps each object’s border color to the color that should fill its holes, using the outer legend color to identify the object and the inner legend color to determine the hole-fill color.`
 
-Result: Solved (somewhat solid, two competing major solutions)
+Result: <font color="green">Solved</font> (somewhat solid, two competing major solutions)
 
 # dd6b8c4b
 
-Without any hint (at highest thinking): Failed
+Without any hint (at highest thinking): <font color="red">Failed</font>
 
 Explicit solution:
 ```
@@ -93,9 +93,9 @@ Explicit solution:
 - #9 can't move through walls but they move as individual squares (not objects)
 - If there are more #9s than can fit into the square, the ones that are closest to the square will move until the square is filled
 ```
-Result: Solved (solid)
+Result: <font color="green">Solved</font> (solid)
 
 Condensed solution: `Squares labeled #9 move individually across ground (#7) toward the target square (#3 with #2 center), stopping at walls (#6) and filling the target with the closest #9s until no more can fit.`
 
-Result: Solved (solid)
+Result: <font color="green">Solved</font> (solid)
 
