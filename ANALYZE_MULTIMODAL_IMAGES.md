@@ -65,7 +65,8 @@ This is a problem that my solver pretty much can't solve, or possibly solves ver
 - 332f06d7_with_test_precise.png: Failed
 
 
+# Conclusion
 
-
+We probably instead should extract the hints in a separate prompt and stay text-only
 
 
