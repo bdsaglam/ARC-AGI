@@ -19,6 +19,7 @@ from src.tasks import load_task, build_prompt
 from src.models import call_model, calculate_cost, parse_model_arg
 from src.utils import parse_grid_from_text, verify_prediction
 from src.logging import setup_logging
+from src.image_generation import generate_and_save_image
 
 # Constants
 DEFAULT_MODELS = [
@@ -170,7 +171,7 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     parser.add_argument("--models", type=str, help="Comma-separated list of models to run")
     parser.add_argument("--hint", type=str, default=None, help="Optional hint to provide to the model")
-    parser.add_argument("--image", type=str, default=None, help="Path to an image to include in the prompt.")
+    parser.add_argument("--image", action="store_true", help="Generate an image for the task and include it in the prompt.")
     parser.add_argument("--trigger-deep-thinking", action="store_true", help="Append a deep thinking procedure to the prompt.")
     
     args = parser.parse_args()
@@ -240,8 +241,13 @@ def main():
 
     test_example = task.test[test_idx]
 
+    # Generate image if requested
+    image_path = None
+    if args.image:
+        image_path = generate_and_save_image(task, args.task, "logs")
+
     # Build Prompt
-    prompt = build_prompt(task.train, test_example, strategy=args.hint, image_path=args.image, trigger_deep_thinking=args.trigger_deep_thinking)
+    prompt = build_prompt(task.train, test_example, strategy=args.hint, image_path=image_path, trigger_deep_thinking=args.trigger_deep_thinking)
 
     total_calls = len(models_to_run)
     print(f"Starting parallel execution for {total_calls} models...")
@@ -266,7 +272,7 @@ def main():
                 anthropic_client,
                 google_client,
                 args.verbose,
-                args.image,
+                image_path,
             )
             future_to_model[future] = model_name
         

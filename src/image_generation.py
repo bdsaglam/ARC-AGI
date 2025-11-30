@@ -4,15 +4,18 @@ import numpy as np
 import json
 import os
 import matplotlib.patheffects as path_effects
-from src.types import Task
+from src.tasks import Task
 from typing import List, Tuple
+import logging
+
+logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 
 # Define a consistent color map for ARC tasks
 CMAP = colors.ListedColormap([
     '#000000', '#0074D9', '#FF4136', '#2ECC40', '#FFDC00',
     '#AAAAAA', '#F012BE', '#FF851B', '#7FDBFF', '#870C25'
 ])
-NORM = colors.Normalize(vmin=0, vmax=9)
+NORM = colors.BoundaryNorm(list(range(11)), CMAP.N)
 CELL_PIXELS = 15
 DPI = 100
 PADDING_FACTOR = 1.2
@@ -20,12 +23,9 @@ PADDING_FACTOR = 1.2
 def _draw_cartoon_grid(ax, grid, title):
     rows, cols = grid.shape
     ax.imshow(grid, cmap=CMAP, norm=NORM, interpolation='nearest', zorder=0, aspect='equal')
-    ax.set_xticks(np.arange(-0.5, cols, 1), minor=True)
-    ax.set_yticks(np.arange(-0.5, rows, 1), minor=True)
-    ax.grid(which='minor', color='w', linestyle='-', linewidth=0) # Set grid color to white
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_title(title, fontsize=10)
+    ax.set_title(title, fontsize=24, fontweight='bold', pad=20)
 
     # Custom path effects for borders
     border_width = 1
@@ -62,6 +62,7 @@ def generate_and_save_image(task: Task, task_id: str, output_dir: str) -> str:
     
     with plt.xkcd():
         fig = plt.figure(figsize=(fig_width_px / DPI, fig_height_px / DPI))
+        fig.patch.set_facecolor('#F8F8F4')
         gs = fig.add_gridspec(num_pairs, 2, height_ratios=height_ratios, hspace=0.5)
 
         for i, (input_grid, output_grid) in enumerate(train_tasks):
@@ -71,13 +72,16 @@ def generate_and_save_image(task: Task, task_id: str, output_dir: str) -> str:
             _draw_cartoon_grid(ax_out, output_grid, f"Output {i+1}")
 
             # Add arrow between input and output
-            trans = fig.transFigure.inverted()
-            coord1 = trans.transform(ax_in.transAxes.transform([1.1, 0.5]))
-            coord2 = trans.transform(ax_out.transAxes.transform([-0.1, 0.5]))
-            arrow = plt.Line2D((coord1[0], coord2[0]), (coord1[1], coord2[1]),
-                               transform=fig.transFigure, color='black',
-                               linestyle='->', lw=1)
-            fig.lines.append(arrow)
+            fig.canvas.draw()
+            y_pos = (ax_in.get_position().y0 + ax_in.get_position().y1) / 2
+            plt.annotate(
+                '',
+                xy=(ax_out.get_position().x0 - 0.02, y_pos),
+                xycoords='figure fraction',
+                xytext=(ax_in.get_position().x1 + 0.02, y_pos),
+                textcoords='figure fraction',
+                arrowprops=dict(facecolor='black', edgecolor='black', shrink=0.05, width=12, headwidth=25, lw=3)
+            )
 
         gs.tight_layout(fig, pad=1.0)
         output_filename = os.path.join(output_dir, f"{task_id}_cartoon.png")

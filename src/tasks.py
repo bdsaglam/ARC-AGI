@@ -52,9 +52,6 @@ def build_prompt(
     if strategy:
         lines.append(f"Suggested Strategy: {strategy}")
     
-    if image_path:
-        lines.append("Attached you'll find an image the show the input/output example pairs. Use this image to find objects, patterns and transformations")
-
     lines.append("Each grid cell is an integer 0-9 representing a color.")
     lines.append(
         "Use the solved examples to infer the transformation and apply it to the test input."
@@ -71,6 +68,10 @@ def build_prompt(
     lines.append("Test input:")
     lines.append(format_grid(test_example.input))
     lines.append("")
+
+    if image_path:
+        lines.append("Attached you'll find an image the show the input/output example pairs. Use this image to find objects, patterns and transformations")
+        lines.append("")
 
     if trigger_deep_thinking:
         lines.append("PROTOCOL OVERRIDE: ENGAGE ARC NEURO-SYMBOLIC LOGIC ENGINE")
