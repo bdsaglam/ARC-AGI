@@ -43,28 +43,29 @@ To run the full eval 2 data set just run the command `python run.py --task-direc
 
 By default, the script has 20 --task-workers, and the output will look something like this:
 ```
-  Task         Status       Step                      Outcome   Duration
- ────────────────────────────────────────────────────────────────────────
-  16de56c4:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  16de56c4:2   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  20a9e565:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  20a9e565:2   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  247ef758:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  247ef758:2   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  332f06d7:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  36a08778:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  36a08778:2   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  3dc255db:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  409aa875:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  581f7754:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  581f7754:2   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  5961cc34:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  67e490f4:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  71e489b6:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  71e489b6:2   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  7b3084d4:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  80a900e0:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
-  898e7135:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  Task         Status         Step                       Outcome   Duration
+ ───────────────────────────────────────────────────────────────────────────
+  16de56c4:1   🟡 RUNNING     Step 5 (Full search)                    39:50
+  16de56c4:2   🟡 RUNNING     Step 5 (Full search)                    39:50
+  20a9e565:1   🟡 RUNNING     Step 5 (Full search)                    39:50
+  20a9e565:2   🟡 RUNNING     Step 5 (Full search)                    39:49
+  247ef758:1   🟡 RUNNING     Step 5 (Full search)                    39:49
+  247ef758:2   🟡 RUNNING     Step 3 (Extended search)                39:49
+  332f06d7:1   🟡 RUNNING     Step 5 (Full search)                    39:49
+  36a08778:1   🟡 RUNNING     Step 3 (Extended search)                39:49
+  36a08778:2   🟡 RUNNING     Step 1 (Shallow search)                 39:49
+  3dc255db:1   🟡 RUNNING     Step 3 (Extended search)                39:49
+  409aa875:1   🟡 RUNNING     Step 5 (Full search)                    39:49
+  581f7754:1   🟡 RUNNING     Step 5 (Full search)                    39:49
+  581f7754:2   🟡 RUNNING     Step 3 (Extended search)                39:49
+  67e490f4:1   🟡 RUNNING     Step 5 (Full search)                    39:49
+  71e489b6:1   🟡 RUNNING     Step 3 (Extended search)                39:49
+  71e489b6:2   🟡 RUNNING     Step 5 (Full search)                    39:49
+  7b3084d4:1   🟡 RUNNING     Step 5 (Full search)                    39:49
+  80a900e0:1   🟡 RUNNING     Step 5 (Full search)                    39:49
+  898e7135:1   🟡 RUNNING     Step 5 (Full search)                    39:49
+  8b9c3697:1   🟡 RUNNING     Step 1 (Shallow search)                 02:24
+  5961cc34:1   🟢 COMPLETED   Finished                   PASS         37:25
 ```
 
 # Overview
