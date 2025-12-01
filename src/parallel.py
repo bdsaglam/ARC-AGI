@@ -1,6 +1,8 @@
 import time
 import re
 import sys
+import os
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import httpx
@@ -123,6 +125,13 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             return {"model": model_name, "run_id": run_id, "grid": None, "is_correct": False, "cost": cost, "duration": duration, "prompt": prompt, "full_response": full_response, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens}
 
     except Exception as e:
+        # Loud error reporting to bypass buffering
+        error_msg = f"\n!!! CRITICAL ERROR in {model_name} ({run_id}) !!!\n{str(e)}\n{traceback.format_exc()}\n"
+        try:
+            os.write(2, error_msg.encode('utf-8', errors='replace'))
+        except OSError:
+            pass # Fallback if stderr is closed
+
         print(f"{prefix} Error during execution: {e}", file=sys.stderr)
         
         if run_timestamp:

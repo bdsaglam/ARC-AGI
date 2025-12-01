@@ -40,11 +40,14 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
         except Exception as e:
              # If we have a queue, try to report the crash
             if progress_queue:
+                error_msg = str(e)
+                if len(error_msg) > 50:
+                    error_msg = error_msg[:47] + "..."
                 progress_queue.put({
                     "task_id": task_id,
                     "test_index": test_index,
                     "status": "ERROR",
-                    "step": "Crashed",
+                    "step": f"Error: {error_msg}",
                     "outcome": "FAIL",
                     "event": "FINISH",
                     "timestamp": time.time()

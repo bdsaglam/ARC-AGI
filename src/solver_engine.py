@@ -271,7 +271,10 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
         return finalize_result(candidates_object, "step_finish")
         
     except Exception as e:
-        reporter.emit("ERROR", "Crashed", outcome="FAIL", event="FINISH")
+        error_msg = str(e)
+        if len(error_msg) > 50:
+            error_msg = error_msg[:47] + "..."
+        reporter.emit("ERROR", f"Error: {error_msg}", outcome="FAIL", event="FINISH")
         log_failure(
             run_timestamp=run_timestamp if run_timestamp else "unknown_timestamp",
             task_id=task_id,

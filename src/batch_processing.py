@@ -69,11 +69,14 @@ def run_batch_execution(args, tasks_to_run, run_timestamp, rate_limit_scale, use
                             except Exception as e:
                                 key = f"{task_path.stem}:{test_idx}"
                                 if key not in task_states or task_states[key].get("status") != "COMPLETED":
+                                        error_msg = str(e)
+                                        if len(error_msg) > 50:
+                                            error_msg = error_msg[:47] + "..."
                                         update_task_states(task_states, {
                                         "task_id": task_path.stem,
                                         "test_index": test_idx,
                                         "status": "ERROR",
-                                        "step": f"Error: {str(e)}",
+                                        "step": f"Error: {error_msg}",
                                         "outcome": "FAIL",
                                         "event": "FINISH",
                                         "timestamp": time.time()
