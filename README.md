@@ -75,8 +75,20 @@ This is mainly an LLM based algorithm across the major frontier models. It does 
 
 I've done a bunch of analysis to come to this algorithm that may be informative to others trying to solve ARC AGI. Please see below for some of that analysis, or just hook me up on the ARC AGI discord channel.
 
+## Next steps
 
-## Analysis
+The next improvements that I'm hoping to do to my algorithm are:
+- Improve the search within problems by extracting the "most obvious transformation", and then just applying that to all the inputs (including the "test" set) and then solving the problem
+- Be more conscious around temperature and possibly other model parameters as well
+- Implement a sparse grid representation as part of the search for solutions
+- Improve on the hint methodology, there's more performance to gain here
+- Train a separate model to predict the likelihood of a solution actually being correct, and use this to guide the search. Right now there's just heuristics around this. Need to be conscious not to overfit while doing this.
+- In my current algorithm, it seems that the multi modal part of the solver is only marginally adding to the performance, but I want to experiment a bit more with nano banana pro, imagen, sora, veo, etc. I think there is a fundamentally additative form of insights that come from these models
+- There's something broken with my gemini implementation. Google is for sure using something else (other settings, or other model) in their submission to arc agi 2, not sure how to reconcile
+- Grok doesn't seem to be particularly performant, but I guess I should try it out too. I'm more curious about the chinese open source models. They may add completely other angles that could be highly complimentary.
+- I suppose I should implement an explicit python based solver too. I don't like the idea of doing the search in "python space" (seems inefficient) but I can see it being very powerful in verifying solutions, or even "implementing the best of solutions"
+
+## Historical analysis
 
 ### Base Model Performance
 [Base Model Analysis](ANALYZE_BASE_MODELS.md)
