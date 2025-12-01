@@ -22,7 +22,7 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str):
     with PrefixedStdout(prefix):
         try:
             if args.solver or args.solver_testing:
-                run_solver_mode(str(task_path), test_index, args.verbose, is_testing=args.solver_testing, run_timestamp=run_timestamp)
+                run_solver_mode(task_id, test_index, args.verbose, is_testing=args.solver_testing, run_timestamp=run_timestamp)
             else:
                 run_default_mode(args)
         except Exception as e:
@@ -41,9 +41,9 @@ def main():
     # Task selection group
     task_group = parser.add_mutually_exclusive_group(required=True)
     task_group.add_argument("--task", help="Task ID (e.g., 38007db0) or path to JSON file")
-    task_group.add_argument("--task_directory", help="Directory containing task JSON files to run in batch")
+    task_group.add_argument("--task-directory", help="Directory containing task JSON files to run in batch")
     
-    parser.add_argument("--test", type=int, default=1, help="Test case index (1-based, default: 1). Ignored if --task_directory is used.")
+    parser.add_argument("--test", type=int, default=1, help="Test case index (1-based, default: 1). Ignored if --task-directory is used.")
     parser.add_argument("--workers", type=int, default=10, help="Number of parallel workers (default: 10)")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     parser.add_argument("--models", type=str, help="Comma-separated list of models to run")
@@ -64,7 +64,7 @@ def main():
 
     if args.task_directory:
         if args.test != 1:
-             print(f"Warning: --test argument ({args.test}) is ignored when using --task_directory. Running all tests for all tasks.", file=sys.stderr)
+             print(f"Warning: --test argument ({args.test}) is ignored when using --task-directory. Running all tests for all tasks.", file=sys.stderr)
 
         directory = Path(args.task_directory)
         if not directory.exists() or not directory.is_dir():
