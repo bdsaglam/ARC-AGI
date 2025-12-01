@@ -132,11 +132,11 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
 
     # STEP 2
     print("\n--- STEP 2: First check ---")
-    solved_prob = is_solved(candidates_object)
-    step_2_log = {"candidates_object": {str(k): v for k, v in candidates_object.items()}, "is_solved_prob": solved_prob}
+    solved = is_solved(candidates_object)
+    step_2_log = {"candidates_object": {str(k): v for k, v in candidates_object.items()}, "is_solved": solved}
     write_step_log("step_2", step_2_log, run_timestamp)
-    if solved_prob > 0.9:
-        print("is_solved() > 0.9, moving to STEP FINISH.")
+    if solved:
+        print("is_solved() is TRUE, moving to STEP FINISH.")
         picked_solutions, result = pick_solution(candidates_object)
         finish_log = {"candidates_object": {str(k): v for k, v in candidates_object.items()}, "picked_solutions": picked_solutions, "result": "PASS" if result else "FAIL", "correct_solution": test_example.output}
         write_step_log("step_finish", finish_log, run_timestamp)
@@ -154,11 +154,11 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
 
     # STEP 4
     print("\n--- STEP 4: Second check ---")
-    solved_prob = is_solved(candidates_object)
-    step_4_log = {"candidates_object": {str(k): v for k, v in candidates_object.items()}, "is_solved_prob": solved_prob}
+    solved = is_solved(candidates_object)
+    step_4_log = {"candidates_object": {str(k): v for k, v in candidates_object.items()}, "is_solved": solved}
     write_step_log("step_4", step_4_log, run_timestamp)
-    if solved_prob > 0.9:
-        print("is_solved() > 0.9, moving to STEP FINISH.")
+    if solved:
+        print("is_solved() is TRUE, moving to STEP FINISH.")
         picked_solutions, result = pick_solution(candidates_object)
         finish_log = {"candidates_object": {str(k): v for k, v in candidates_object.items()}, "picked_solutions": picked_solutions, "result": "PASS" if result else "FAIL", "correct_solution": test_example.output}
         write_step_log("step_finish", finish_log, run_timestamp)

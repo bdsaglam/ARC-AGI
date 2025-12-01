@@ -17,7 +17,7 @@ from src.image_generation import generate_and_save_image
 from src.hint_generation import generate_hint
 from src.logging import setup_logging
 from src.parallel import run_single_model
-from src.run_utils import find_task_path, get_group_sort_key
+from src.run_utils import find_task_path
 
 DEFAULT_MODELS = [
     "claude-sonnet-4.5-thinking-1024",
@@ -160,7 +160,7 @@ def run_default_mode(args):
         grouped_solutions[grid_tuple]["count"] += 1
         grouped_solutions[grid_tuple]["models"].append(res["run_id"])
 
-    sorted_groups = sorted(grouped_solutions.values(), key=get_group_sort_key, reverse=True)
+    sorted_groups = sorted(grouped_solutions.values(), key=lambda g: g['count'], reverse=True)
     
     print("\n" + "="*40)
     print("FINAL OUTCOME")
