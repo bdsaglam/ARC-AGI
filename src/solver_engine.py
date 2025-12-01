@@ -62,7 +62,7 @@ def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test
                 all_results.append(res)
     return all_results
 
-def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, progress_queue=None):
+def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, progress_queue=None, answer_path: Path = None):
     reporter = ProgressReporter(progress_queue, task_id, test_index)
     reporter.emit("RUNNING", "Initializing", event="START")
     
@@ -113,7 +113,7 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
         google_client = genai.Client(api_key=google_key) if google_key else None
 
         try:
-            task = load_task(task_path)
+            task = load_task(task_path, answer_path=answer_path)
         except Exception as e:
             print(f"Error loading task: {e}", file=sys.stderr)
             http_client.close()
@@ -156,6 +156,30 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
             new_solutions = len(candidates_object) - initial_solutions
             print(f"Found {new_solutions} new unique solutions.")
 
+        def finalize_result(candidates_object, step_log_name):
+             # Check if we have ground truth
+            has_ground_truth = test_example.output is not None
+            
+            picked_solutions, result = pick_solution(candidates_object)
+            
+            # Determine outcome string
+            if not has_ground_truth:
+                outcome = "SUBMITTED"
+            else:
+                outcome = "PASS" if result else "FAIL"
+                
+            finish_log = {
+                "candidates_object": {str(k): v for k, v in candidates_object.items()},
+                "picked_solutions": picked_solutions,
+                "result": outcome,
+                "correct_solution": test_example.output
+            }
+            write_step_log("step_finish", finish_log, run_timestamp)
+            print_summary()
+            http_client.close()
+            reporter.emit("COMPLETED", "Finished", outcome=outcome, event="FINISH", predictions=picked_solutions)
+            return picked_solutions
+
         # STEP 1
         print("\n--- STEP 1: Initial model run ---")
         reporter.emit("RUNNING", "Step 1 (Shallow search)", event="STEP_CHANGE")
@@ -174,13 +198,7 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
         write_step_log("step_2", step_2_log, run_timestamp)
         if solved:
             print("is_solved() is TRUE, moving to STEP FINISH.")
-            picked_solutions, result = pick_solution(candidates_object)
-            finish_log = {"candidates_object": {str(k): v for k, v in candidates_object.items()}, "picked_solutions": picked_solutions, "result": "PASS" if result else "FAIL", "correct_solution": test_example.output}
-            write_step_log("step_finish", finish_log, run_timestamp)
-            print_summary()
-            http_client.close()
-            reporter.emit("COMPLETED", "Finished", outcome=("PASS" if result else "FAIL"), event="FINISH", predictions=picked_solutions)
-            return picked_solutions
+            return finalize_result(candidates_object, "step_finish")
 
         # STEP 3
         print("\n--- STEP 3: Second model run ---")
@@ -200,13 +218,7 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
         write_step_log("step_4", step_4_log, run_timestamp)
         if solved:
             print("is_solved() is TRUE, moving to STEP FINISH.")
-            picked_solutions, result = pick_solution(candidates_object)
-            finish_log = {"candidates_object": {str(k): v for k, v in candidates_object.items()}, "picked_solutions": picked_solutions, "result": "PASS" if result else "FAIL", "correct_solution": test_example.output}
-            write_step_log("step_finish", finish_log, run_timestamp)
-            print_summary()
-            http_client.close()
-            reporter.emit("COMPLETED", "Finished", outcome=("PASS" if result else "FAIL"), event="FINISH", predictions=picked_solutions)
-            return picked_solutions
+            return finalize_result(candidates_object, "step_finish")
 
         # STEP 5
         print("\n--- STEP 5: Final model runs (in parallel) ---")
@@ -256,14 +268,7 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
 
         # STEP FINISH
         print("\n--- STEP FINISH: Pick and print solution ---")
-        picked_solutions, result = pick_solution(candidates_object)
-        finish_log = {"candidates_object": {str(k): v for k, v in candidates_object.items()}, "picked_solutions": picked_solutions, "result": "PASS" if result else "FAIL", "correct_solution": test_example.output}
-        write_step_log("step_finish", finish_log, run_timestamp)
-            
-        print_summary()
-        http_client.close()
-        reporter.emit("COMPLETED", "Finished", outcome=("PASS" if result else "FAIL"), event="FINISH", predictions=picked_solutions)
-        return picked_solutions
+        return finalize_result(candidates_object, "step_finish")
         
     except Exception as e:
         reporter.emit("ERROR", "Crashed", outcome="FAIL", event="FINISH")

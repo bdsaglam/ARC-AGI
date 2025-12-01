@@ -38,6 +38,7 @@ def main():
     parser.add_argument("--generate-hint-model", type=str, default="gpt-5.1-high", help="Model to use for generating hints.")
     parser.add_argument("--no-dashboard", action="store_true", help="Disable the rich dashboard in batch mode.")
     parser.add_argument("--submissions-directory", type=str, default="submissions/", help="Directory to save submission files (default: submissions/).")
+    parser.add_argument("--answers-directory", type=str, help="Optional directory containing answer files (with 'output' for test cases).")
 
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument("--solver", action="store_true", help="Enable solver mode.")
@@ -46,6 +47,11 @@ def main():
     args = parser.parse_args()
     
     warnings.filterwarnings("ignore", message=r"Pydantic serializer warnings:", category=UserWarning)
+
+    answers_dir = Path(args.answers_directory) if args.answers_directory else None
+    if answers_dir and not answers_dir.exists():
+         print(f"Error: Answers directory '{answers_dir}' does not exist.", file=sys.stderr)
+         sys.exit(1)
 
     if args.task_directory:
         if args.test != 1:
@@ -65,6 +71,8 @@ def main():
         tasks_to_run = []
         for task_file in sorted(task_files):
             try:
+                # Load task briefly just to count tests, we load again in worker
+                # We don't need answer path here strictly, but good to know
                 task = load_task(task_file)
                 num_tests = len(task.test)
                 for i in range(num_tests):
@@ -81,7 +89,7 @@ def main():
         # Determine if we should use the dashboard
         use_dashboard = RICH_AVAILABLE and sys.stdout.isatty() and not args.no_dashboard and (args.solver or args.solver_testing)
 
-        final_results = run_batch_execution(args, tasks_to_run, run_timestamp, rate_limit_scale, use_dashboard)
+        final_results = run_batch_execution(args, tasks_to_run, run_timestamp, rate_limit_scale, use_dashboard, answers_dir)
                         
         # Generate Submission File
         generate_submission(final_results, args.submissions_directory, run_timestamp)
@@ -90,7 +98,11 @@ def main():
         # Single task mode
         try:
             task_path = find_task_path(args.task)
-            execute_task(args, task_path, args.test, run_timestamp)
+            answer_path = None
+            if answers_dir:
+                 answer_path = answers_dir / task_path.name
+            
+            execute_task(args, task_path, args.test, run_timestamp, answer_path=answer_path)
         except FileNotFoundError as e:
              print(f"Error: {e}", file=sys.stderr)
              sys.exit(1)

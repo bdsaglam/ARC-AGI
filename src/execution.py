@@ -12,7 +12,7 @@ class DummyFile:
     @property
     def encoding(self): return 'utf-8'
 
-def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rate_limit_scale: float = 1.0, progress_queue=None, quiet=False):
+def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rate_limit_scale: float = 1.0, progress_queue=None, quiet=False, answer_path: Path = None):
     # Apply rate limit scaling (only affects this process)
     if rate_limit_scale != 1.0:
         set_rate_limit_scaling(rate_limit_scale)
@@ -33,10 +33,10 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
         sys.stderr = devnull
         try:
             if args.solver or args.solver_testing:
-                predictions = run_solver_mode(task_id, test_index, args.verbose, is_testing=args.solver_testing, run_timestamp=run_timestamp, task_path=task_path, progress_queue=progress_queue)
+                predictions = run_solver_mode(task_id, test_index, args.verbose, is_testing=args.solver_testing, run_timestamp=run_timestamp, task_path=task_path, progress_queue=progress_queue, answer_path=answer_path)
             else:
                 # default mode doesn't support progress_queue yet, so it will just run silently if quiet=True
-                predictions = run_default_mode(args)
+                predictions = run_default_mode(args, answer_path=answer_path)
         except Exception as e:
              # If we have a queue, try to report the crash
             if progress_queue:
@@ -59,9 +59,9 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
         with PrefixedStdout(prefix):
             try:
                 if args.solver or args.solver_testing:
-                    predictions = run_solver_mode(task_id, test_index, args.verbose, is_testing=args.solver_testing, run_timestamp=run_timestamp, task_path=task_path, progress_queue=progress_queue)
+                    predictions = run_solver_mode(task_id, test_index, args.verbose, is_testing=args.solver_testing, run_timestamp=run_timestamp, task_path=task_path, progress_queue=progress_queue, answer_path=answer_path)
                 else:
-                    predictions = run_default_mode(args)
+                    predictions = run_default_mode(args, answer_path=answer_path)
             except Exception as e:
                 raise e
     

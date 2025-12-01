@@ -108,9 +108,10 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             if verbose:
                 if is_correct:
                     print(f"{prefix} Result: PASS")
-                else:
+                elif is_correct is False:
                     print(f"{prefix} Result: FAIL")
-                    print(f"\n{prefix} Predicted Grid:")
+                else:
+                    print(f"{prefix} Result: UNKNOWN (No Ground Truth)")
                     print(grid_text)
             
             return {"model": model_name, "run_id": run_id, "grid": predicted_grid, "is_correct": is_correct, "cost": cost, "duration": duration, "prompt": prompt, "full_response": full_response, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens}

@@ -47,14 +47,20 @@ def pick_solution(candidates_object):
     print("="*40)
     
     is_solved_flag = False
+    unknown_status = False
     top_groups = sorted_groups[:2]
     
-    if len(top_groups) > 0 and top_groups[0]["is_correct"]:
-        is_solved_flag = True
-    elif len(top_groups) > 1 and top_groups[1]["is_correct"]:
-        is_solved_flag = True
+    if len(top_groups) > 0:
+        if top_groups[0].get("is_correct") is None:
+            unknown_status = True
+        elif top_groups[0]["is_correct"]:
+            is_solved_flag = True
+        elif len(top_groups) > 1 and top_groups[1]["is_correct"]:
+            is_solved_flag = True
         
-    if is_solved_flag:
+    if unknown_status:
+        print("Outcome: SUBMITTED (No Ground Truth)")
+    elif is_solved_flag:
         print("Outcome: SOLVED")
     else:
         print("Outcome: FAILED")
@@ -64,7 +70,9 @@ def pick_solution(candidates_object):
         print("No solutions generated.")
     else:
         for i, group in enumerate(top_groups):
-            print(f"Group {i+1}: Count={group['count']}, Correct={group['is_correct']}")
+            correctness = group.get('is_correct')
+            c_str = "Unknown" if correctness is None else str(correctness)
+            print(f"Group {i+1}: Count={group['count']}, Correct={c_str}")
             print(f"  Models: {', '.join(group['models'])}")
 
     # Check for other correct groups
@@ -72,7 +80,7 @@ def pick_solution(candidates_object):
     for i, group in enumerate(sorted_groups):
         if i < 2:
             continue
-        if group.get('is_correct'):
+        if group.get('is_correct') is True:
             other_correct.append((i + 1, group))
             
     if other_correct:

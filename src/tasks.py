@@ -1,27 +1,48 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from src.utils import Grid, format_grid
 
 @dataclass
 class Example:
     input: Grid
-    output: Grid
+    output: Optional[Grid]
 
 @dataclass
 class Task:
     train: List[Example]
     test: List[Example]
 
-def load_task(json_path: Path) -> Task:
+def load_task(json_path: Path, answer_path: Path = None) -> Task:
     data = json.loads(json_path.read_text())
 
-    def to_examples(items: List[dict]) -> List[Example]:
-        return [Example(input=ex["input"], output=ex["output"]) for ex in items]
+    def to_examples(items: List[dict], is_test: bool = False) -> List[Example]:
+        examples = []
+        for i, ex in enumerate(items):
+            input_grid = ex["input"]
+            output_grid = ex.get("output")
+            examples.append(Example(input=input_grid, output=output_grid))
+        return examples
 
-    return Task(train=to_examples(data["train"]), test=to_examples(data["test"]))
+    train_examples = to_examples(data["train"])
+    test_examples = to_examples(data["test"], is_test=True)
+
+    # If answer_path is provided, try to load outputs from it
+    if answer_path and answer_path.exists():
+        try:
+            answer_data = json.loads(answer_path.read_text())
+            # Assuming answer file has same structure: {"test": [{"output": ...}, ...]}
+            if "test" in answer_data:
+                answer_tests = answer_data["test"]
+                for i, ex in enumerate(test_examples):
+                    if i < len(answer_tests) and ex.output is None:
+                        ex.output = answer_tests[i].get("output")
+        except Exception as e:
+            print(f"Warning: Failed to load answers from {answer_path}: {e}")
+
+    return Task(train=train_examples, test=test_examples)
 
 def load_task_paths(list_path: Path) -> List[Path]:
     payload = json.loads(list_path.read_text())

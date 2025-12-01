@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import httpx
@@ -25,7 +26,7 @@ DEFAULT_MODELS = [
     "gpt-5.1-low"
 ]
 
-def run_default_mode(args):
+def run_default_mode(args, answer_path: Path = None):
     if args.models:
         models_to_run = [m.strip() for m in args.models.split(",") if m.strip()]
     else:
@@ -56,7 +57,7 @@ def run_default_mode(args):
     google_client = genai.Client(api_key=google_key) if google_key else None
 
     try:
-        task = load_task(task_path)
+        task = load_task(task_path, answer_path=answer_path)
     except Exception as e:
         print(f"Error loading task: {e}", file=sys.stderr)
         http_client.close()
@@ -167,14 +168,20 @@ def run_default_mode(args):
     print("="*40)
     
     is_solved = False
+    unknown_status = False
     top_groups = sorted_groups[:2]
     
-    if len(top_groups) > 0 and top_groups[0]["is_correct"]:
-        is_solved = True
-    elif len(top_groups) > 1 and top_groups[1]["is_correct"]:
-        is_solved = True
+    if len(top_groups) > 0:
+         if top_groups[0]["is_correct"] is None:
+             unknown_status = True
+         elif top_groups[0]["is_correct"]:
+             is_solved = True
+         elif len(top_groups) > 1 and top_groups[1]["is_correct"]:
+             is_solved = True
         
-    if is_solved:
+    if unknown_status:
+        print("Outcome: SUBMITTED (No Ground Truth)")
+    elif is_solved:
         print("Outcome: SOLVED")
     else:
         print("Outcome: FAILED")
@@ -194,12 +201,13 @@ def run_default_mode(args):
         print("No solutions generated.")
     else:
         for i, group in enumerate(top_groups):
-            print(f"Group {i+1}: Count={group['count']}, Correct={group['is_correct']}")
+            c_str = str(group['is_correct']) if group['is_correct'] is not None else "Unknown"
+            print(f"Group {i+1}: Count={group['count']}, Correct={c_str}")
             print(f"  Models: {', '.join(group['models'])}")
             
         for i in range(2, len(sorted_groups)):
             group = sorted_groups[i]
-            if group['is_correct']:
+            if group['is_correct'] is True:
                 print(f"Group {i+1}: Count={group['count']}, Correct={group['is_correct']}")
                 print(f"  Models: {', '.join(group['models'])}")
     

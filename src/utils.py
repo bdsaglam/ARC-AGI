@@ -1,9 +1,11 @@
-from typing import List
+from typing import List, Optional
 
 Grid = List[List[int]]
 
 def format_grid(grid: Grid) -> str:
     """Formats a grid as CSV."""
+    if grid is None:
+        return ""
     return "\n".join(",".join(str(c) for c in row) for row in grid)
 
 def parse_grid_from_text(text: str) -> Grid:
@@ -48,5 +50,7 @@ def parse_grid_from_text(text: str) -> Grid:
     
     return blocks[-1]
 
-def verify_prediction(predicted: Grid, expected: Grid) -> bool:
+def verify_prediction(predicted: Grid, expected: Optional[Grid]) -> Optional[bool]:
+    if expected is None:
+        return None
     return predicted == expected
