@@ -12,6 +12,7 @@ from src.models import call_model, parse_model_arg, calculate_cost
 from src.utils import parse_grid_from_text, verify_prediction
 from src.rate_limiter import RateLimiter
 from src.config import PROVIDER_RATE_LIMITS
+from src.logging import log_failure
 
 # Initialize global rate limiters per provider
 LIMITERS = {
@@ -19,7 +20,7 @@ LIMITERS = {
     for name, config in PROVIDER_RATE_LIMITS.items()
 }
 
-def run_single_model(model_name, run_id, prompt, test_example, openai_client, anthropic_client, google_client, verbose, image_path=None):
+def run_single_model(model_name, run_id, prompt, test_example, openai_client, anthropic_client, google_client, verbose, image_path=None, run_timestamp=None):
     prefix = f"[{run_id}]"
     if verbose:
         print(f"{prefix} Initiating call...")
@@ -97,4 +98,14 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
 
     except Exception as e:
         print(f"{prefix} Error during execution: {e}", file=sys.stderr)
+        
+        if run_timestamp:
+             log_failure(
+                run_timestamp=run_timestamp,
+                task_id="UNKNOWN", # Passed context is limited here, improved in next refactor if needed
+                run_id=run_id,
+                error=e,
+                model=model_name
+            )
+            
         return {"model": model_name, "run_id": run_id, "grid": None, "is_correct": False, "cost": cost, "duration": duration, "prompt": prompt, "full_response": str(e), "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens}

@@ -1,5 +1,13 @@
 import logging
 import sys
+import json
+import datetime
+import traceback
+import threading
+from pathlib import Path
+
+# Global lock to ensure atomic writes to the failures file
+_failures_lock = threading.Lock()
 
 def setup_logging(verbose: bool = False) -> logging.Logger:
     """
@@ -45,3 +53,46 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
 
 def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(f"arc_agi.{name}")
+
+def log_failure(
+    run_timestamp: str,
+    task_id: str,
+    run_id: str,
+    error: Exception,
+    model: str = None,
+    step: str = None,
+    test_index: int = None
+):
+    """
+    Logs a structured failure record to a JSONL file.
+    Designed to be a 'System of Record' for terminal failures.
+    """
+    try:
+        # Construct the failures file path: logs/{timestamp}_failures.jsonl
+        log_dir = Path("logs")
+        log_dir.mkdir(exist_ok=True)
+        failures_path = log_dir / f"{run_timestamp}_failures.jsonl"
+
+        entry = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "task_id": task_id,
+            "test_index": test_index,
+            "step": step,
+            "model": model,
+            "run_id": run_id,
+            "error_type": type(error).__name__,
+            "error_message": str(error),
+            "stack_trace": traceback.format_exc()
+        }
+
+        # Serialize safely (handle non-serializable types)
+        json_entry = json.dumps(entry, default=str)
+
+        with _failures_lock:
+            with open(failures_path, "a", encoding="utf-8") as f:
+                f.write(json_entry + "\n")
+                f.flush() # Ensure it hits the disk
+                
+    except Exception as e:
+        # Fallback: Don't let logging crash the application
+        print(f"CRITICAL: Failed to log failure to DLQ: {e}", file=sys.stderr)
