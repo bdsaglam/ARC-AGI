@@ -46,6 +46,10 @@ def main():
     
     args = parser.parse_args()
     
+    # If no specific solver mode is chosen, default to --solver
+    if not args.solver and not args.solver_testing:
+        args.solver = True
+    
     warnings.filterwarnings("ignore", message=r"Pydantic serializer warnings:", category=UserWarning)
 
     answers_dir = Path(args.answers_directory) if args.answers_directory else None
