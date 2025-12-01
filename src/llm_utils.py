@@ -11,14 +11,15 @@ logger = get_logger("llm_utils")
 
 def run_with_retry(
     func: Callable[[], Any],
-    max_retries: int = 7
+    max_retries: int = 3
 ) -> Any:
     """
     Generic retry loop helper using RetryableProviderError.
-    Implements Decorrelated Jitter for backoff.
+    Retries: 2 times (3 total attempts).
+    Sleeps: 60s, 300s.
     """
-    base_delay = 1
-    cap = 60
+    # Fixed delays for the 2 retries
+    retry_delays = [60, 300]
 
     for attempt in range(max_retries):
         try:
@@ -29,19 +30,16 @@ def run_with_retry(
             if attempt == max_retries - 1:
                 raise e
             
-            # Decorrelated Jitter: sleep = min(cap, random.uniform(base, sleep * 3))
-            # Or simple Full Jitter: sleep = random.uniform(0, min(cap, base * 2 ** attempt))
-            # Let's use Full Jitter as planned
-            
-            sleep_time = random.uniform(0, min(cap, base_delay * (2 ** attempt)))
-            # Ensure at least a small wait
-            sleep_time = max(1.0, sleep_time)
+            if attempt < len(retry_delays):
+                sleep_time = retry_delays[attempt]
+            else:
+                sleep_time = retry_delays[-1]
 
             if isinstance(e, UnknownProviderError):
                 logger.error(f"!!! UNKNOWN ERROR (after {duration:.2f}s) - RETRYING (Attempt {attempt + 1}/{max_retries}) !!!")
                 logger.error(f"Error details: {e}")
             else:
-                logger.warning(f"Retryable error (after {duration:.2f}s): {e}. Retrying in {sleep_time:.2f}s (Attempt {attempt + 1}/{max_retries})...")
+                logger.warning(f"Retryable error (after {duration:.2f}s): {e}. Retrying in {sleep_time}s (Attempt {attempt + 1}/{max_retries})...")
             
             time.sleep(sleep_time)
             
