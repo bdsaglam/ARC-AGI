@@ -3,3 +3,4 @@ config/api_keys.env
 __pycache__/
 logs/
 data/
+image_generation.md
