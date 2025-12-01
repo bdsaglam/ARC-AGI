@@ -225,24 +225,27 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
         reporter.emit("RUNNING", "Step 5 (Full search)", event="STEP_CHANGE")
         step_5_log = {"trigger-deep-thinking": {}, "image": {}, "generate-hint": {}}
 
+        # Generate image once for both visual and hint steps to avoid matplotlib race conditions
+        common_image_path = f"logs/{run_timestamp}_{task_id}_{test_index}_step5_common.png"
+        generate_and_save_image(task, common_image_path)
+
         def run_deep_thinking_step():
             print(f"Running {len(models_step5)} models with deep thinking...")
             prompt_deep = build_prompt(task.train, test_example, trigger_deep_thinking=True)
             results_deep = run_models_in_parallel(models_step5, run_id_counts, "step_5_deep_thinking", prompt_deep, test_example, openai_client, anthropic_client, google_keys, verbose, run_timestamp=run_timestamp)
             return "trigger-deep-thinking", results_deep
 
-        def run_image_step():
+        def run_image_step(img_path):
             print(f"Running {len(models_step5)} models with image...")
-            image_path = f"logs/{run_timestamp}_{task_id}_{test_index}_step5_image.png"
-            generate_and_save_image(task, image_path)
-            prompt_image = build_prompt(task.train, test_example, image_path=image_path)
-            results_image = run_models_in_parallel(models_step5, run_id_counts, "step_5_image", prompt_image, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=image_path, run_timestamp=run_timestamp)
+            # Image is already generated
+            prompt_image = build_prompt(task.train, test_example, image_path=img_path)
+            results_image = run_models_in_parallel(models_step5, run_id_counts, "step_5_image", prompt_image, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=img_path, run_timestamp=run_timestamp)
             return "image", results_image
 
-        def run_hint_step():
+        def run_hint_step(img_path):
             print(f"Running {len(models_step5)} models with generated hint...")
-            hint_image_path = f"logs/{run_timestamp}_{task_id}_{test_index}_step5_generate_hint.png"
-            hint_data = generate_hint(task, hint_image_path, hint_generation_model, verbose)
+            # Image is already generated
+            hint_data = generate_hint(task, img_path, hint_generation_model, verbose)
             if hint_data and hint_data["hint"]:
                 step_5_log["generate-hint"]["hint_generation"] = {
                     "Full raw LLM call": hint_data["prompt"],
@@ -257,8 +260,8 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
         with ThreadPoolExecutor(max_workers=3) as executor:
             futures = [
                 executor.submit(run_deep_thinking_step),
-                executor.submit(run_image_step),
-                executor.submit(run_hint_step)
+                executor.submit(run_image_step, common_image_path),
+                executor.submit(run_hint_step, common_image_path)
             ]
             for future in as_completed(futures):
                 step_name, results = future.result()
