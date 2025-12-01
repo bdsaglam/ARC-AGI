@@ -1,6 +1,4 @@
-# ARC-AGI
-
-## Quickstart
+# How to get started
 
 ```bash
 git clone https://github.com/beetree/ARC-AGI
@@ -18,7 +16,6 @@ python run.py --task-directory tasks_no_answers_single_task/ --answers-directory
 You should see something like this, and it should complete in a few minutes only
 
 ```
-(.venv) johan@DESKTOP-9NEKHDK:~/tmp/ARC-AGI$ python run.py --task-directory tasks_no_answers_single_task/ --answers-directory answers_only_single_task/
 Found 1 task files. Total test cases: 1
 Starting batch execution with 20 parallel task workers...
 
@@ -27,28 +24,56 @@ Starting batch execution with 20 parallel task workers...
   2ba387bc:1   🟡 RUNNING   Step 1 (Shallow search)                04:03
 ```
 
-The --solver-testing activates an extremely dumb solver that will fail on all problems, but it still runs through the full flow. Hence, it's good for testing that the environment is properly set up, all keys are working, etc.
+This task should complete in a few minutes, and since we have specified --answers-directory in the command line the script will also correct the answer. When it finishes, it should look something like this:
 
-
-
-
-The `.venv/` directory is ignored by Git, so every contributor can maintain their own environment locally without polluting the repo. Add any third-party libraries you install to `requirements.txt` so others can reproduce the environment quickly.
-
-`main.py` accepts a JSON file containing a list of ARC task file paths (e.g., `data/first_100.json`). It loads each puzzle, packages the training examples plus each test input into an OpenAI prompt, requests a completion from `gpt-5.1`, and parses the returned grid. The predicted grid is compared against the ground-truth test output from the JSON file, and the script prints PASS/FAIL for each test case plus a summary table at the end. Use `--reasoning` to select the effort level (supported by `gpt-5.1`: `none`, `low`, `medium`, or `high`). Ensure `OPENAI_API_KEY` is exported (see example commands above) before running it; otherwise the script will exit with an error.
-
-While running, stdout is limited to a streaming Markdown table with one row per test case. Copy the rows into `Results.md` (or another document) if you want to persist the results after the run.
-
-An example task list (`data/first_100.json`) looks like:
-
-```json
-{
-  "tasks": [
-    "data/arc-agi-2-training/00576224.json",
-    "data/arc-agi-2-training/007bbfb7.json",
-    "... more task paths ..."
-  ]
-}
 ```
+  Task         Status         Step       Outcome   Duration
+ ───────────────────────────────────────────────────────────
+  2ba387bc:1   🟢 COMPLETED   Finished   PASS         06:02
+
+Submission file saved to: submissions/2025-11-30_23-55-50_submission.json
+```
+
+Do note that --answers-directory is optional. All answers are stores in submissions/ in one big .json file as well as individual answer files.
+
+
+To run the full eval 2 data set just run the command `python run.py --task-directory tasks_eval2_no_answers/`
+
+... or if you want the script to also correct the answers, then run `python run.py --task-directory tasks_eval2_no_answers/ --answers-directory answers_only_eval2/`
+
+By default, the script has 20 --task-workers, and the script will look something like this:
+```
+  Task         Status       Step                      Outcome   Duration
+ ────────────────────────────────────────────────────────────────────────
+  16de56c4:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  16de56c4:2   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  20a9e565:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  20a9e565:2   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  247ef758:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  247ef758:2   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  332f06d7:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  36a08778:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  36a08778:2   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  3dc255db:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  409aa875:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  581f7754:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  581f7754:2   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  5961cc34:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  67e490f4:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  71e489b6:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  71e489b6:2   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  7b3084d4:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  80a900e0:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+  898e7135:1   🟡 RUNNING   Step 1 (Shallow search)                06:35
+```
+
+# Overview
+
+## Algorithm
+
+This is mainly an LLM based algorithm across the major frontier models. It does however implement some funky stuff like multimodal data, hint extraction, deeper analysis through the prompt, as well as some degree of smarter searching through the solutions.
+
+I've done a bunch of analysis to come to this algorithm that may be informative to others trying to solve ARC AGI. Please see below for some of that analysis, or just hook me up on the ARC AGI discord channel.
 
 
 ## Analysis
