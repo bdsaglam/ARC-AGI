@@ -35,4 +35,5 @@ tqdm==4.67.1
 typing_extensions==4.12.2
 urllib3==1.26.20
 websocket-client==1.8.0
-yarl==1.18.3rich
+yarl==1.18.3
+rich
