@@ -7,7 +7,7 @@ image_generation.md
 answers_batch/
 config/api_keys_all.env
 submissions/
-tasks_batch/
+tasks_batch*/
 logs_backup/
-run_2025_12_01/
+run_2025_*/
 config/api_keys_ff.env
