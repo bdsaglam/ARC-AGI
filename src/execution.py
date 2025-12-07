@@ -33,7 +33,17 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
         sys.stderr = devnull
         try:
             if args.solver or args.solver_testing:
-                predictions = run_solver_mode(task_id, test_index, args.verbose, is_testing=args.solver_testing, run_timestamp=run_timestamp, task_path=task_path, progress_queue=progress_queue, answer_path=answer_path)
+                predictions = run_solver_mode(
+                    task_id, test_index, args.verbose, 
+                    is_testing=args.solver_testing, 
+                    run_timestamp=run_timestamp, 
+                    task_path=task_path, 
+                    progress_queue=progress_queue, 
+                    answer_path=answer_path,
+                    step_5_only=args.step_5_only,
+                    objects_only=args.objects_only,
+                    force_step_5=args.force_step_5
+                )
             else:
                 # default mode doesn't support progress_queue yet, so it will just run silently if quiet=True
                 predictions = run_default_mode(args, answer_path=answer_path)
@@ -62,7 +72,17 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
         with PrefixedStdout(prefix):
             try:
                 if args.solver or args.solver_testing:
-                    predictions = run_solver_mode(task_id, test_index, args.verbose, is_testing=args.solver_testing, run_timestamp=run_timestamp, task_path=task_path, progress_queue=progress_queue, answer_path=answer_path)
+                    predictions = run_solver_mode(
+                        task_id, test_index, args.verbose, 
+                        is_testing=args.solver_testing, 
+                        run_timestamp=run_timestamp, 
+                        task_path=task_path, 
+                        progress_queue=progress_queue, 
+                        answer_path=answer_path,
+                        step_5_only=args.step_5_only,
+                        objects_only=args.objects_only,
+                        force_step_5=args.force_step_5
+                    )
                 else:
                     predictions = run_default_mode(args, answer_path=answer_path)
             except Exception as e:

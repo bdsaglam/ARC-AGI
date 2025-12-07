@@ -33,7 +33,7 @@ def load_task(json_path: Path, answer_path: Path = None) -> Task:
     if answer_path and answer_path.exists():
         try:
             answer_data = json.loads(answer_path.read_text())
-            # Assuming answer file has same structure: {"test": [{"output": ...}, ...]}
+            # Assuming answer file has same structure: {"test": [{"output": ...}, ...]}}
             if "test" in answer_data:
                 answer_tests = answer_data["test"]
                 for i, ex in enumerate(test_examples):
@@ -60,12 +60,69 @@ def load_task_paths(list_path: Path) -> List[Path]:
         result.append(Path(item))
     return result
 
+import random
+
+def build_objects_extraction_prompt(
+    train_examples: List[Example],
+    test_example: Example
+) -> str:
+    lines = [
+        "Describe the types objects involved in the grids below. Do not infer rules, transformations, or relationships between grids. Focus solely on the types of objects that are involved in the various grids and the objects attributes, and describe them generally - not for each grid.",
+        "When describing colors, use ONLY the numeric values (0-9), e.g., 'color 0', 'color 5'. Do not use color names like 'black' or 'gray'.",
+        "After describing the objects, please provide a concise summary of the object types and attributes within <objects_summary>...</objects_summary> tags.",
+        ""
+    ]
+    
+    # Collect all grids
+    all_grids = []
+    for ex in train_examples:
+        all_grids.append(ex.input)
+        if ex.output:
+            all_grids.append(ex.output)
+    all_grids.append(test_example.input)
+    
+    # Randomize order
+    random.shuffle(all_grids)
+    
+    for grid in all_grids:
+        lines.append(format_grid(grid))
+        lines.append("")
+    
+    return "\n".join(lines)
+
+def build_objects_transformation_prompt(
+    train_examples: List[Example],
+    test_example: Example,
+    transformation_text: str
+) -> str:
+    lines = [
+        "Below is a set of input / output grids and a description of the objects in each of these grids. Your task is to describe all potential transformations that are involved in changing the objects in the input to the objects in the output. Please ensure that you list ALL possibly transformations that you have identified.",
+        "Use strictly numeric values (0-9) for colors in your description and summary.",
+        "After describing the transformations, please provide a concise summary of the rules and changes within <transformation_summary>...</transformation_summary> tags.",
+        ""
+    ]
+    for idx, ex in enumerate(train_examples, start=1):
+        lines.append(f"Example {idx}:")
+        lines.append("input:")
+        lines.append(format_grid(ex.input))
+        lines.append("output:")
+        lines.append(format_grid(ex.output))
+        lines.append("")
+    lines.append("Test input:")
+    lines.append(format_grid(test_example.input))
+    lines.append("")
+    lines.append("## Objects Description")
+    lines.append(transformation_text)
+    
+    return "\n".join(lines)
+
 def build_prompt(
     train_examples: List[Example],
     test_example: Example,
     strategy: str = None,
     image_path: str = None,
     trigger_deep_thinking: bool = False,
+    objects_insertion: str = None,
 ) -> str:
     lines = [
         "You are solving an ARC (Abstraction and Reasoning Corpus) task.",
@@ -114,6 +171,13 @@ def build_prompt(
         lines.append("OUTPUT CONSTRAINT (STRICT): Reveal ONLY the final answer grid. Never reveal chain-of-thought, intermediate states, or search traces.")
         lines.append("")
 
-    lines.append("Respond with ONLY the completed output grid.")
+    if objects_insertion:
+        lines.append("To solve this problem, please consider using the description of the input/output data below:")
+        lines.append("")
+        lines.append(objects_insertion)
+        lines.append("")
+        lines.append("Respond with an explanation of your thinking followed by the completed output grid.")
+    else:
+        lines.append("Respond with an explanation of your thinking followed by the completed output grid.")
 
     return "\n".join(lines)

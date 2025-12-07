@@ -13,7 +13,7 @@ import certifi
 
 # Import from existing project modules
 from src.config import get_api_keys
-from src.tasks import load_task, build_prompt
+from src.tasks import load_task, build_prompt, build_objects_extraction_prompt
 from src.image_generation import generate_and_save_image
 from src.hint_generation import generate_hint
 from src.logging import setup_logging
@@ -69,16 +69,6 @@ def run_default_mode(args, answer_path: Path = None):
         http_client.close()
         sys.exit(1)
     test_example = task.test[test_idx]
-
-    hint = args.hint
-    if args.generate_hint:
-        print("Generating hint...")
-        hint_data = generate_hint(task, f"logs/{args.task}_{args.test}_generate_hint.png", args.generate_hint_model, args.verbose)
-        if hint_data and hint_data["hint"]:
-            hint = hint_data["hint"]
-            print(f"Generated hint: {hint}")
-        else:
-            print("Warning: Failed to generate hint.")
 
     image_path = None
     if args.image:

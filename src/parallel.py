@@ -47,6 +47,14 @@ def set_rate_limit_scaling(factor: float):
         limiter.rate = new_rate
         limiter.per_seconds = 60.0 / new_rate
 
+def extract_tag_content(text: str, tag_name: str) -> str | None:
+    """Extracts content between <tag>...</tag>."""
+    pattern = f"<{tag_name}>(.*?)</{tag_name}>"
+    match = re.search(pattern, text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return None
+
 def run_single_model(model_name, run_id, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None):
     prefix = f"[{run_id}]"
     if verbose:
