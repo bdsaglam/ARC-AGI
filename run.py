@@ -33,6 +33,7 @@ def main():
     parser.add_argument("--step-5-only", action="store_true", help="Run only Step 5 (Full Search) of the solver.")
     parser.add_argument("--objects-only", action="store_true", help="Run only the Objects Pipeline sub-strategy in Step 5.")
     parser.add_argument("--force-step-5", action="store_true", help="Force execution of Step 5 even if a solution is found in earlier steps.")
+    parser.add_argument("--force-step-2", action="store_true", help="Force the pipeline to stop after Step 2 (First Check), proceeding to Step Finish regardless of outcome.")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging.")
     parser.add_argument("--models", type=str, help="Comma-separated list of models to run")
     parser.add_argument("--hint", type=str, default=None, help="Optional hint to provide to the model")

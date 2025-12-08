@@ -42,7 +42,8 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
                     answer_path=answer_path,
                     step_5_only=args.step_5_only,
                     objects_only=args.objects_only,
-                    force_step_5=args.force_step_5
+                    force_step_5=args.force_step_5,
+                    force_step_2=args.force_step_2
                 )
             else:
                 # default mode doesn't support progress_queue yet, so it will just run silently if quiet=True
@@ -81,7 +82,8 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
                         answer_path=answer_path,
                         step_5_only=args.step_5_only,
                         objects_only=args.objects_only,
-                        force_step_5=args.force_step_5
+                        force_step_5=args.force_step_5,
+                        force_step_2=args.force_step_2
                     )
                 else:
                     predictions = run_default_mode(args, answer_path=answer_path)

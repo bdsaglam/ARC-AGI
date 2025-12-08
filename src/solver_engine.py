@@ -62,7 +62,7 @@ def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test
                 all_results.append(res)
     return all_results
 
-def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, progress_queue=None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False):
+def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, progress_queue=None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False, force_step_2: bool = False):
     reporter = ProgressReporter(progress_queue, task_id, test_index)
     reporter.emit("RUNNING", "Initializing", event="START")
     
@@ -70,7 +70,7 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
         if is_testing:
             print("Solver testing mode activated.")
             # Models for --solver-testing
-            models_step1 = ["claude-sonnet-4.5-no-thinking", "gpt-5.1-none", "gemini-3-low"]
+            models_step1 = ["claude-sonnet-4.5-no-thinking", "gpt-5.1-none", "claude-sonnet-4.5-no-thinking", "gpt-5.1-none", "claude-opus-4.5-no-thinking"]
             models_step3 = ["claude-sonnet-4.5-no-thinking", "gpt-5.1-none"]
             models_step5 = ["claude-sonnet-4.5-no-thinking", "gpt-5.1-none"]
             hint_generation_model = "gpt-5.1-none"
@@ -128,10 +128,12 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
         
         run_id_counts = {}
         candidates_object = {}
+        reasoning_store = {}
 
         def process_results(results, step_log):
             nonlocal candidates_object
             nonlocal total_cost
+            nonlocal reasoning_store
             initial_solutions = len(candidates_object)
             for res in results:
                 if res:
@@ -147,6 +149,10 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
                         "Full raw LLM response": res["full_response"],
                         "Extracted grid": res["grid"],
                     }
+                    
+                    # Store reasoning for the Judge
+                    reasoning_store[res["run_id"]] = res["full_response"]
+                    
                     if res["grid"] is not None:
                         grid_tuple = tuple(tuple(row) for row in res["grid"])
                         if grid_tuple not in candidates_object:
@@ -160,7 +166,17 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
              # Check if we have ground truth
             has_ground_truth = test_example.output is not None
             
-            picked_solutions, result = pick_solution(candidates_object)
+            # Use pick_solution_v2 logic
+            from src.run_utils import pick_solution_v2
+            picked_solutions, result, selection_metadata = pick_solution_v2(
+                candidates_object, 
+                reasoning_store, 
+                task, 
+                test_index,
+                openai_client,
+                anthropic_client,
+                google_keys
+            )
             
             # Determine outcome string
             if not has_ground_truth:
@@ -172,7 +188,8 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
                 "candidates_object": {str(k): v for k, v in candidates_object.items()},
                 "picked_solutions": picked_solutions,
                 "result": outcome,
-                "correct_solution": test_example.output
+                "correct_solution": test_example.output,
+                "selection_details": selection_metadata
             }
             write_step_log("step_finish", finish_log, run_timestamp)
             print_summary()
@@ -200,6 +217,11 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
             solved = is_solved(candidates_object)
             step_2_log = {"candidates_object": {str(k): v for k, v in candidates_object.items()}, "is_solved": solved}
             write_step_log("step_2", step_2_log, run_timestamp)
+
+            if force_step_2:
+                print("--force-step-2 is active. Moving to STEP FINISH.")
+                return finalize_result(candidates_object, "step_finish")
+
             if solved and not force_step_5:
                 print("is_solved() is TRUE, moving to STEP FINISH.")
                 return finalize_result(candidates_object, "step_finish")
