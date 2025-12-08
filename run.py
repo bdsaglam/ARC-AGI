@@ -41,6 +41,7 @@ def main():
     parser.add_argument("--trigger-deep-thinking", action="store_true", help="Append a deep thinking procedure to the prompt.")
     parser.add_argument("--generate-hint", action="store_true", help="Generate a hint for the task using a separate model call.")
     parser.add_argument("--generate-hint-model", type=str, default="gpt-5.1-high", help="Model to use for generating hints.")
+    parser.add_argument("--judge-model", type=str, default="gemini-3-high", help="Model to use for the auditing judges (Logic & Consistency).")
     parser.add_argument("--no-dashboard", action="store_true", help="Disable the rich dashboard in batch mode.")
     parser.add_argument("--submissions-directory", type=str, default="submissions/", help="Directory to save submission files (default: submissions/).")
     parser.add_argument("--answers-directory", type=str, help="Optional directory containing answer files (with 'output' for test cases).")

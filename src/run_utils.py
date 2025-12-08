@@ -149,7 +149,7 @@ def grid_to_csv_rows(grid):
         lines.append("      " + ",".join(map(str, row)))
     return "\n".join(lines)
 
-def pick_solution_v2(candidates_object, reasoning_store, task, test_index, openai_client, anthropic_client, google_keys):
+def pick_solution_v2(candidates_object, reasoning_store, task, test_index, openai_client, anthropic_client, google_keys, judge_model="gemini-3-high"):
     """
     Advanced solution picker using TWO LLM Judges (Logic & Consistency).
     Replicates methodology from solution_handler.py:
@@ -296,9 +296,9 @@ def pick_solution_v2(candidates_object, reasoning_store, task, test_index, opena
     cons_data = { "prompt": full_prompt_cons, "response": None, "parsed": None }
 
     def run_judge(judge_name, prompt, data_holder):
-        print(f"\n[pick_solution_v2] Running {judge_name} Judge (gemini-3-high)...")
+        print(f"\n[pick_solution_v2] Running {judge_name} Judge ({judge_model})...")
         try:
-            response_obj = call_model(openai_client, anthropic_client, google_keys, prompt, "gemini-3-high")
+            response_obj = call_model(openai_client, anthropic_client, google_keys, prompt, judge_model)
             data_holder["response"] = response_obj.text
             
             json_match = re.search(r"\{.*\}", response_obj.text, re.DOTALL)

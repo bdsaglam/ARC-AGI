@@ -62,7 +62,7 @@ def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test
                 all_results.append(res)
     return all_results
 
-def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, progress_queue=None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False, force_step_2: bool = False):
+def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, progress_queue=None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False, force_step_2: bool = False, judge_model: str = "gemini-3-high"):
     reporter = ProgressReporter(progress_queue, task_id, test_index)
     reporter.emit("RUNNING", "Initializing", event="START")
     
@@ -175,7 +175,8 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
                 test_index,
                 openai_client,
                 anthropic_client,
-                google_keys
+                google_keys,
+                judge_model
             )
             
             # Determine outcome string
