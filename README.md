@@ -135,6 +135,13 @@ Transformation 2: `1. **Identify palette**: A 2-row (horizontal) or 2-column (ve
 
 As you can see in the objects the concept of a palette is identified, and even the "bottom-top" logic which is key to coming to the right solution (which most models get wrong) is correctly identified.
 
+## Multi agent judge
+
+The key problem that this is overcoming is bad models clustering around wrong answers. For some problems there is an obvious and seemingly correct logic for how to solve it, but in a non-immediately-obvious way this solution can be proven wrong. In practice, this simplifies it quite a bit, but the principle is as simple as this.
+
+The solution (not perfect, but adding significant performance) is to chain another LLM call focused purely on assessing the answers. This is a very large prompt, on order of 30-80k input tokens that takes the full reasoning from each of the models for each of their attempted methodology and then scores them based on two methodologies: (1) attempts to recreate the logic/code that the solution is using and tests its ability of solving the test cases, and (2) checks the multiple solution candidates for their consistency (e.g. they all came to the same answer, but did they do so in the same way). Based on the results of these two judges the two attempted answers are selected.
+
+I've only run this for a set of select problems where it seems to help a lot, but haven't yet tested it for the full dataset - e.g. I haven't yet measured the adverse impact of it, for example it might choose the wrong solutions by "being smart" when the obvious solution is actually the right solution.
 
 ### Base Model Performance
 [Base Model Analysis](ANALYZE_BASE_MODELS.md)
