@@ -143,6 +143,20 @@ The solution (not perfect, but adding significant performance) is to chain anoth
 
 I've only run this for a set of select problems where it seems to help a lot, but haven't yet tested it for the full dataset - e.g. I haven't yet measured the adverse impact of it, for example it might choose the wrong solutions by "being smart" when the obvious solution is actually the right solution.
 
+Below is an example of a non-sensical reasoning by GPT-5.1-high on this problem: https://arcprize.org/play?task=d35bdbdc
+
+```
+Applying this to the **test input**:
+
+- I scanned all possible 3×3 windows (top-left positions (r,c) with 0 ≤ r ≤ 7, 0 ≤ c ≤ 7).
+- In every 3×3 window, the 8 border cells were **not all the same non-zero color**; there is no 3×3 frame of the kind used in the training examples.
+- Therefore, the set of special squares is empty; the graph has no nodes; no paths, no pairings, and thus **no modifications** are applied.
+
+So the output grid is identical to the input grid.
+```
+
+This is a mistake that several models end up doing, therefore there's a cluster of solutions around bad answers.
+
 ### Visual Hints
 [Visual Hints Analysis](ANALYZE_VISUAL_HINTS.md)
 
