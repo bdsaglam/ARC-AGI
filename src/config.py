@@ -13,11 +13,16 @@ PROVIDER_RATE_LIMITS = {
     "google": {"rate": 15, "period": 60}
 }
 
+_SSL_WARNING_PRINTED = False
+
 def get_http_client(**kwargs) -> httpx.Client:
     """Returns a shared httpx client, potentially with insecure SSL if configured."""
+    global _SSL_WARNING_PRINTED
     insecure = os.getenv("ARC_AGI_INSECURE_SSL", "").lower() == "true"
     if insecure:
-        print("WARNING: SSL verification disabled (ARC_AGI_INSECURE_SSL=true)")
+        if not _SSL_WARNING_PRINTED:
+            print("WARNING: SSL verification disabled (ARC_AGI_INSECURE_SSL=true)")
+            _SSL_WARNING_PRINTED = True
         kwargs["verify"] = False
     return httpx.Client(**kwargs)
 
