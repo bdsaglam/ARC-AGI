@@ -17,17 +17,7 @@ To run the full regression suite:
 
 ## Known Failures
 
-As of Dec 8, 2025, 107/109 tests pass. The following 2 cases are known to fail:
-
-1.  **`gpt-5.1-high_2_step_1_1765155396.197504.txt`**
-    *   **Issue:** Ground Truth Mismatch.
-    *   **Details:** The raw text contains a row `1,1,1,1,3...` (4 ones). The `parse_grid_from_text` correctly extracts 4 ones. However, the Ground Truth LLM (`claude-opus`) consistently hallucinates/corrects this to `1,1,1,1,1,3...` (5 ones).
-    *   **Verdict:** The parser is correct; the ground truth is flawed but preserved to document LLM disagreement.
-
-2.  **`objects_pipeline_gemini-3-high_12_step_5_opus_gen_sol_1765142275.8652031.txt`**
-    *   **Issue:** Ragged Grid (Width Mismatch).
-    *   **Details:** The model output contained rows of varying lengths (mostly 25, some 26). The parser faithfully extracted this ragged grid (height 3). The test suite sanity check enforces strict rectangularity (`assert len(row) == width`), causing an assertion error (`26 == 25`).
-    *   **Verdict:** The parser is faithfully extracting the model's malformed output. The failure is in the strictness of the test sanity check vs. the reality of model output quality.
+As of Dec 8, 2025, 109/109 tests pass. There are no known failures.
 
 ## Adding New Test Cases
 
