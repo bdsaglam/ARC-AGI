@@ -130,3 +130,10 @@ def log_failure(
     except Exception as e:
         # Fallback: Don't let logging crash the application
         print(f"CRITICAL: Failed to log failure to DLQ: {e}", file=sys.stderr)
+
+def write_step_log(step_name: str, data: dict, timestamp: str, task_id: str, test_index: int, verbose: bool = False):
+    log_path = Path("logs") / f"{timestamp}_{task_id}_{test_index}_{step_name}.json"
+    with open(log_path, "w") as f:
+        json.dump(data, f, indent=4, default=lambda o: '<not serializable>')
+    if verbose:
+        print(f"Saved log for {step_name} to {log_path}")

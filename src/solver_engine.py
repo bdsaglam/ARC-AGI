@@ -1,71 +1,21 @@
 import sys
-import time
-import json
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import httpx
-from openai import OpenAI
-from anthropic import Anthropic
-from google import genai
+from src.logging import log_failure
+from src.solver.state import SolverState
+from src.solver.steps import run_step_1, run_step_3, run_step_5, check_is_solved
 
-
-# Import from existing project modules
-from src.config import get_api_keys, get_http_client
-from src.tasks import load_task, build_prompt, build_objects_extraction_prompt, build_objects_transformation_prompt
-from src.image_generation import generate_and_save_image
-from src.hint_generation import generate_hint
-from src.logging import setup_logging, log_failure
-from src.parallel import run_single_model, extract_tag_content
-from src.run_utils import find_task_path, pick_solution, is_solved
-
-class ProgressReporter:
-    def __init__(self, queue, task_id, test_index):
-        self.queue = queue
-        self.task_id = task_id
-        self.test_index = test_index
-
-    def emit(self, status, step, outcome=None, event=None, predictions=None):
-        if self.queue is None:
-            return
-        self.queue.put({
-            "task_id": self.task_id,
-            "test_index": self.test_index,
-            "status": status,
-            "step": step,
-            "outcome": outcome,
-            "event": event,
-            "predictions": predictions,
-            "timestamp": time.time(),
-        })
-
-def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None):
-    all_results = []
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        
-        # Generate unique run IDs
-        run_list = []
-        for model_name in models_to_run:
-            count = run_id_counts.get(model_name, 0) + 1
-            run_id_counts[model_name] = count
-            run_id = f"{model_name}_{count}_{step_name}"
-            run_list.append({"name": model_name, "run_id": run_id})
-
-        future_to_run_id = {
-            executor.submit(run_single_model, run["name"], run["run_id"], prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path, run_timestamp): run["run_id"]
-            for run in run_list
-        }
-
-        for future in as_completed(future_to_run_id):
-            res = future.result()
-            if res:
-                all_results.append(res)
-    return all_results
-
+# Re-export run_solver_mode for backward compatibility if imported elsewhere
 def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, progress_queue=None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False, force_step_2: bool = False, judge_model: str = "gemini-3-high"):
-    reporter = ProgressReporter(progress_queue, task_id, test_index)
-    reporter.emit("RUNNING", "Initializing", event="START")
     
+    # Initialize State
+    try:
+        state = SolverState(task_id, test_index, verbose, is_testing, run_timestamp, task_path, progress_queue, answer_path, judge_model)
+        state.reporter.emit("RUNNING", "Initializing", event="START")
+    except Exception as e:
+        print(f"Error initializing solver state: {e}", file=sys.stderr)
+        raise e
+
     try:
         if is_testing:
             print("Solver testing mode activated.")
@@ -81,303 +31,41 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
             models_step3 = ["claude-opus-4.5-thinking-60000", "claude-opus-4.5-thinking-60000", "gpt-5.1-high", "gpt-5.1-high", "gemini-3-high", "gemini-3-high"]
             models_step5 = ["claude-opus-4.5-thinking-60000", "claude-opus-4.5-thinking-60000", "gpt-5.1-high", "gpt-5.1-high", "gemini-3-high", "gemini-3-high"]
             hint_generation_model = "gpt-5.1-high"
-        
-        setup_logging(verbose)
-
-        start_time = time.time()
-        total_cost = 0.0
-
-        def print_summary():
-            duration = time.time() - start_time
-            print(f"\nTotal Execution Time: {duration:.2f}s")
-            print(f"Total Cost: ${total_cost:.4f}")
-
-        def write_step_log(step_name: str, data: dict, timestamp: str):
-            log_path = Path("logs") / f"{timestamp}_{task_id}_{test_index}_{step_name}.json"
-            with open(log_path, "w") as f:
-                json.dump(data, f, indent=4, default=lambda o: '<not serializable>')
-            if verbose:
-                print(f"Saved log for {step_name} to {log_path}")
-
-        if task_path is None:
-            try:
-                task_path = find_task_path(task_id)
-            except FileNotFoundError as e:
-                print(f"Error: {e}", file=sys.stderr)
-                sys.exit(1)
-
-        openai_key, claude_key, google_keys = get_api_keys()
-        http_client = get_http_client(timeout=3600.0)
-        openai_client = OpenAI(api_key=openai_key, http_client=http_client) if openai_key else None
-        anthropic_client = Anthropic(api_key=claude_key, http_client=http_client) if claude_key else None
-        # google_client instantiation removed as we now pass keys directly
-
-        try:
-            task = load_task(task_path, answer_path=answer_path)
-        except Exception as e:
-            print(f"Error loading task: {e}", file=sys.stderr)
-            http_client.close()
-            sys.exit(1)
-
-        test_idx = test_index - 1
-        if test_idx < 0 or test_idx >= len(task.test):
-            print(f"Error: Test index {test_index} is out of range.", file=sys.stderr)
-            http_client.close()
-            sys.exit(1)
-        test_example = task.test[test_idx]
-        
-        run_id_counts = {}
-        candidates_object = {}
-        reasoning_store = {}
-
-        def process_results(results, step_log):
-            nonlocal candidates_object
-            nonlocal total_cost
-            nonlocal reasoning_store
-            initial_solutions = len(candidates_object)
-            for res in results:
-                if res:
-                    total_cost += res.get("cost", 0)
-                    run_key = f"{res['run_id']}_{time.time()}"
-                    step_log[run_key] = {
-                        "duration_seconds": round(res.get("duration", 0), 2),
-                        "total_cost": res.get("cost", 0),
-                        "input_tokens": res.get("input_tokens", 0),
-                        "output_tokens": res.get("output_tokens", 0),
-                        "cached_tokens": res.get("cached_tokens", 0),
-                        "Full raw LLM call": res["prompt"],
-                        "Full raw LLM response": res["full_response"],
-                        "Extracted grid": res["grid"],
-                    }
-                    
-                    # Store reasoning for the Judge
-                    reasoning_store[res["run_id"]] = res["full_response"]
-                    
-                    if res["grid"] is not None:
-                        grid_tuple = tuple(tuple(row) for row in res["grid"])
-                        if grid_tuple not in candidates_object:
-                            candidates_object[grid_tuple] = {"grid": res["grid"], "count": 0, "models": [], "is_correct": res["is_correct"]}
-                        candidates_object[grid_tuple]["count"] += 1
-                        candidates_object[grid_tuple]["models"].append(res["run_id"])
-            new_solutions = len(candidates_object) - initial_solutions
-            print(f"Found {new_solutions} new unique solutions.")
-
-        def finalize_result(candidates_object, step_log_name):
-             # Check if we have ground truth
-            has_ground_truth = test_example.output is not None
-            
-            # Use pick_solution_v2 logic
-            from src.run_utils import pick_solution_v2
-            picked_solutions, result, selection_metadata = pick_solution_v2(
-                candidates_object, 
-                reasoning_store, 
-                task, 
-                test_index,
-                openai_client,
-                anthropic_client,
-                google_keys,
-                judge_model
-            )
-            
-            # Determine outcome string
-            if not has_ground_truth:
-                outcome = "SUBMITTED"
-            else:
-                outcome = "PASS" if result else "FAIL"
-                
-            finish_log = {
-                "candidates_object": {str(k): v for k, v in candidates_object.items()},
-                "selection_details": selection_metadata,
-                "picked_solutions": picked_solutions,
-                "correct_solution": test_example.output,
-                "result": outcome
-            }
-            write_step_log("step_finish", finish_log, run_timestamp)
-            print_summary()
-            http_client.close()
-            reporter.emit("COMPLETED", "Finished", outcome=outcome, event="FINISH", predictions=picked_solutions)
-            return picked_solutions
 
         # Skip logic
         should_run_early_steps = not (step_5_only or objects_only)
 
         if should_run_early_steps:
             # STEP 1
-            print("\n--- STEP 1: Initial model run ---")
-            reporter.emit("RUNNING", "Step 1 (Shallow search)", event="STEP_CHANGE")
-            step_1_log = {}
-            print(f"Running {len(models_step1)} models...")
-            prompt_step1 = build_prompt(task.train, test_example)
-            results_step1 = run_models_in_parallel(models_step1, run_id_counts, "step_1", prompt_step1, test_example, openai_client, anthropic_client, google_keys, verbose, run_timestamp=run_timestamp)
-            process_results(results_step1, step_1_log)
-            write_step_log("step_1", step_1_log, run_timestamp)
+            run_step_1(state, models_step1)
 
             # STEP 2
-            print("\n--- STEP 2: First check ---")
-            reporter.emit("RUNNING", "Step 2 (Evaluation)", event="STEP_CHANGE")
-            solved = is_solved(candidates_object)
-            step_2_log = {"candidates_object": {str(k): v for k, v in candidates_object.items()}, "is_solved": solved}
-            write_step_log("step_2", step_2_log, run_timestamp)
-
-            if force_step_2:
-                print("--force-step-2 is active. Moving to STEP FINISH.")
-                return finalize_result(candidates_object, "step_finish")
-
-            if solved and not force_step_5:
-                print("is_solved() is TRUE, moving to STEP FINISH.")
-                return finalize_result(candidates_object, "step_finish")
-            elif solved and force_step_5:
-                print("is_solved() is TRUE, but --force-step-5 is active. Continuing...")
+            finish, _ = check_is_solved(state, "step_2", force_finish=force_step_2, continue_if_solved=force_step_5)
+            if finish:
+                return state.finalize("step_finish")
 
             # STEP 3
-            print("\n--- STEP 3: Second model run ---")
-            reporter.emit("RUNNING", "Step 3 (Extended search)", event="STEP_CHANGE")
-            step_3_log = {}
-            print(f"Running {len(models_step3)} models...")
-            prompt_step3 = build_prompt(task.train, test_example)
-            results_step3 = run_models_in_parallel(models_step3, run_id_counts, "step_3", prompt_step3, test_example, openai_client, anthropic_client, google_keys, verbose, run_timestamp=run_timestamp)
-            process_results(results_step3, step_3_log)
-            write_step_log("step_3", step_3_log, run_timestamp)
+            run_step_3(state, models_step3)
 
             # STEP 4
-            print("\n--- STEP 4: Second check ---")
-            reporter.emit("RUNNING", "Step 4 (Evaluation)", event="STEP_CHANGE")
-            solved = is_solved(candidates_object)
-            step_4_log = {"candidates_object": {str(k): v for k, v in candidates_object.items()}, "is_solved": solved}
-            write_step_log("step_4", step_4_log, run_timestamp)
-            if solved and not force_step_5:
-                print("is_solved() is TRUE, moving to STEP FINISH.")
-                return finalize_result(candidates_object, "step_finish")
-            elif solved and force_step_5:
-                print("is_solved() is TRUE, but --force-step-5 is active. Continuing...")
+            finish, _ = check_is_solved(state, "step_4", continue_if_solved=force_step_5)
+            if finish:
+                return state.finalize("step_finish")
         else:
              print("\nSkipping Steps 1-4 (Deep Search Only Mode)")
 
         # STEP 5
-        print("\n--- STEP 5: Final model runs (in parallel) ---")
-        reporter.emit("RUNNING", "Step 5 (Full search)", event="STEP_CHANGE")
-        step_5_log = {"trigger-deep-thinking": {}, "image": {}, "generate-hint": {}, "objects_pipeline": {}}
-
-        # Generate image once for both visual and hint steps to avoid matplotlib race conditions
-        common_image_path = f"logs/{run_timestamp}_{task_id}_{test_index}_step_5_common.png"
-        generate_and_save_image(task, common_image_path)
-
-        def run_deep_thinking_step():
-            print(f"Running {len(models_step5)} models with deep thinking...")
-            prompt_deep = build_prompt(task.train, test_example, trigger_deep_thinking=True)
-            results_deep = run_models_in_parallel(models_step5, run_id_counts, "step_5_deep_thinking", prompt_deep, test_example, openai_client, anthropic_client, google_keys, verbose, run_timestamp=run_timestamp)
-            return "trigger-deep-thinking", results_deep
-
-        def run_image_step(img_path):
-            print(f"Running {len(models_step5)} models with image...")
-            # Image is already generated
-            prompt_image = build_prompt(task.train, test_example, image_path=img_path)
-            results_image = run_models_in_parallel(models_step5, run_id_counts, "step_5_image", prompt_image, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=img_path, run_timestamp=run_timestamp)
-            return "image", results_image
-
-        def run_hint_step(img_path):
-            print(f"Running {len(models_step5)} models with generated hint...")
-            # Image is already generated
-            hint_data = generate_hint(task, img_path, hint_generation_model, verbose)
-            if hint_data and hint_data["hint"]:
-                step_5_log["generate-hint"]["hint_generation"] = {
-                    "Full raw LLM call": hint_data["prompt"],
-                    "Full raw LLM response": hint_data["full_response"],
-                    "Extracted hint": hint_data["hint"],
-                }
-                prompt_hint = build_prompt(task.train, test_example, strategy=hint_data["hint"])
-                results_hint = run_models_in_parallel(models_step5, run_id_counts, "step_5_generate_hint", prompt_hint, test_example, openai_client, anthropic_client, google_keys, verbose, run_timestamp=run_timestamp)
-                return "generate-hint", results_hint
-            return "generate-hint", []
-
-        def run_objects_pipeline_variant(generator_model, variant_name, solver_models):
-            print(f"Running Objects Pipeline ({variant_name}) with generator {generator_model}...")
-            pipeline_log = {}
-            
-            # Phase A: Extraction
-            prompt_A = build_objects_extraction_prompt(task.train, test_example)
-            res_A = run_single_model(generator_model, f"step_5_{variant_name}_extract", prompt_A, test_example, openai_client, anthropic_client, google_keys, verbose, run_timestamp=run_timestamp)
-            text_A_full = res_A.get("full_response", "")
-            text_A = extract_tag_content(text_A_full, "objects_summary")
-            if not text_A:
-                text_A = text_A_full
-            
-            pipeline_log["extraction"] = {
-                "prompt": prompt_A,
-                "response": text_A_full,
-                "extracted_summary": text_A
-            }
-
-            # Phase B: Transformation
-            prompt_B = build_objects_transformation_prompt(task.train, test_example, text_A)
-            res_B = run_single_model(generator_model, f"step_5_{variant_name}_transform", prompt_B, test_example, openai_client, anthropic_client, google_keys, verbose, run_timestamp=run_timestamp)
-            text_B_full = res_B.get("full_response", "")
-            text_B = extract_tag_content(text_B_full, "transformation_summary")
-            if not text_B:
-                text_B = text_B_full
-
-            pipeline_log["transformation"] = {
-                "prompt": prompt_B,
-                "response": text_B_full,
-                "extracted_summary": text_B
-            }
-
-            # Phase C: Solution
-            insertion_text = f"## Objects Description\n\n{text_A}\n\n## Transformation Description\n\n{text_B}"
-            prompt_C = build_prompt(task.train, test_example, objects_insertion=insertion_text)
-            
-            pipeline_log["solution_prompt"] = prompt_C
-            step_5_log["objects_pipeline"][variant_name] = pipeline_log
-
-            results_C = run_models_in_parallel(solver_models, run_id_counts, f"step_5_{variant_name}_sol", prompt_C, test_example, openai_client, anthropic_client, google_keys, verbose, run_timestamp=run_timestamp)
-            
-            return f"objects_pipeline_{variant_name}", results_C
-
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            futures = []
-            
-            if is_testing:
-                # Testing models
-                gen_gemini = "gemini-3-low"
-                gen_opus = "claude-opus-4.5-thinking-4000"
-                unique_solvers = ["claude-opus-4.5-no-thinking", "gpt-5.1-none", "gemini-3-low"]
-            else:
-                # Production models
-                gen_gemini = "gemini-3-high"
-                gen_opus = "claude-opus-4.5-thinking-60000"
-                unique_solvers = ["claude-opus-4.5-thinking-60000", "gpt-5.1-high", "gemini-3-high"]
-            
-            if objects_only:
-                 futures.append(executor.submit(run_objects_pipeline_variant, gen_gemini, "gemini_gen", unique_solvers))
-                 futures.append(executor.submit(run_objects_pipeline_variant, gen_opus, "opus_gen", unique_solvers))
-            else:
-                futures = [
-                    executor.submit(run_deep_thinking_step),
-                    executor.submit(run_image_step, common_image_path),
-                    executor.submit(run_hint_step, common_image_path),
-                    executor.submit(run_objects_pipeline_variant, gen_gemini, "gemini_gen", unique_solvers),
-                    executor.submit(run_objects_pipeline_variant, gen_opus, "opus_gen", unique_solvers)
-                ]
-                
-            for future in as_completed(futures):
-                step_name, results = future.result()
-                # Handle results from pipelines differently since they return custom keys
-                if step_name.startswith("objects_pipeline_"):
-                    process_results(results, step_5_log["objects_pipeline"])
-                else:
-                    process_results(results, step_5_log[step_name])
-
-        write_step_log("step_5", step_5_log, run_timestamp)
+        run_step_5(state, models_step5, hint_generation_model, objects_only=objects_only)
 
         # STEP FINISH
         print("\n--- STEP FINISH: Pick and print solution ---")
-        return finalize_result(candidates_object, "step_finish")
+        return state.finalize("step_finish")
         
     except Exception as e:
         error_msg = str(e)
         if len(error_msg) > 50:
             error_msg = error_msg[:47] + "..."
-        reporter.emit("ERROR", f"Error: {error_msg}", outcome="FAIL", event="FINISH")
+        state.reporter.emit("ERROR", f"Error: {error_msg}", outcome="FAIL", event="FINISH")
         log_failure(
             run_timestamp=run_timestamp if run_timestamp else "unknown_timestamp",
             task_id=task_id,
