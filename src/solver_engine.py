@@ -259,7 +259,7 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
         step_5_log = {"trigger-deep-thinking": {}, "image": {}, "generate-hint": {}, "objects_pipeline": {}}
 
         # Generate image once for both visual and hint steps to avoid matplotlib race conditions
-        common_image_path = f"logs/{run_timestamp}_{task_id}_{test_index}_step5_common.png"
+        common_image_path = f"logs/{run_timestamp}_{task_id}_{test_index}_step_5_common.png"
         generate_and_save_image(task, common_image_path)
 
         def run_deep_thinking_step():
