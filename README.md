@@ -103,6 +103,7 @@ The next improvements that I'm hoping to do to my algorithm are:
 - Grok doesn't seem to be particularly performant, but I guess I should try it out too. I'm more curious about the chinese open source models. They may add completely other angles that could be highly complimentary.
 - Test anthropic-beta: effort-2025-11-24, with reasoning high and maybe temperatur?
 - Try gemini 3 with 2.0 temperature
+- Should solve all tests within multi-test tasks in one go with an even deeper search. It'll help validate the answers, and probably also to extend to the harder test cases. For example: https://arcprize.org/play?task=d35bdbdc
 - ~~Implement a sparse grid representation as part of the search for solutions~~
 - ~~Improve the search within problems by extracting the "most obvious transformation", and then just applying that to all the inputs (including the "test" set) and then solving the problem~~
 - ~~There's something broken with my gemini implementation. Google is for sure using something else (other settings, or other model) in their submission to arc agi 2, not sure how to reconcile~~
