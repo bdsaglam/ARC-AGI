@@ -143,6 +143,43 @@ The solution (not perfect, but adding significant performance) is to chain anoth
 
 I've only run this for a set of select problems where it seems to help a lot, but haven't yet tested it for the full dataset - e.g. I haven't yet measured the adverse impact of it, for example it might choose the wrong solutions by "being smart" when the obvious solution is actually the right solution.
 
+### Visual Hints
+[Visual Hints Analysis](ANALYZE_VISUAL_HINTS.md)
+
+With explicit but condensed solution instructions there is a material improvement in performance (~5pp) of which maybe half stays even with condensed hints that plausibly could be deduced in some general way.
+
+It is very hard to extract hints that are non-obvious. The observations / transformations that I manage to extract are most of the time only 80% of the solution, and the missing ~20% are the "gotchas" that the models really need to move the needle - they already know "the 80%".
+
+Thereby, it doesn't seem that the hints are truly helping.
+
+### Multi modal, adding images
+[Multi modal, adding images Analysis](ANALYZE_MULTIMODAL_IMAGES.md)
+
+The models does some reasoning better based on images. Therefore we should either supply the images directly to the model, or do it in two stages to extract new insights through an image-only prompt that we then supply to a second stage text-only prompt that solves the problem.
+
+Testing supplying the images directly using different types of generated images does not seem to be helpful in solving the harder problems.
+
+### Deep Think Trigger
+[Deep Think Trigger Analysis](https://github.com/beetree/ARC-AGI/blob/main/ANALYZE_DEEP_THINK_TRIGGER.md)
+
+It seems that attempting to trigger deeper thinking does not actually yield any deeper thinking. The models themselves already trigger a very deep (deepest possible?) think by themselves.
+
+### Answer Verification (before judge approach)
+[Answer Verification Analysis](ANALYZE_VERIFICATION.md)
+
+A key thing to devising the overall approach to solving the problems is to know when the problem has been solved, and ideally do so with high confidence. To do this, I've attempted an approach of replaying test cases with synthetic data expansion selectively. I've done this tuning for precision (e.g. avoiding falsely verifying answer that turn out to be wrong).
+
+When saying something is verified it truly is correct ~94% of the time (precision) on problems that reasonably could be truly solved, while falsely setting them as not verified when they actually were true ~50% of the time (1-recall). On the full sample though, the precision is closer to 90-100%, but the recall drops downwards of 25-30%.
+
+To ensure the precision truly approaches 100% I'm going to add in that the solution needs to be run twice with matching grids together with a perfect score on the test data with synthetic expansion. Later on I'll train a model to actually predict the likelihood of a true PASS based on all the testing done up to then.
+
+### Strategy Extraction
+[Strategy Extraction Analysis](ANALYZE_STRATEGY_EXTRACTION.md)
+
+In order to refine the results we need to introduce a concept of "strategy" (or explanation) of why the model has chosen to come to a certain answer/conclusion. This "strategy" works like a guide that can be applied to other test cases thereby enabling us to validate responses, either through testing it on the supplied test data or on synthetic data. Or even by building up a library of strategies from solved problems, generalizing them and mapping them to identifyable traits of problems to supply strategies at solution time for unknown problems.
+
+I tested several approaches of getting a "strategy" out of the model. Many had an actual performance implication by affecting the reasoning, through a distraction or deterioration of the spacial reasoning. In the end, the best proved to be a two stage prompt approach where the first stage outputs the solution, and a second stage outputs the strategy with as much context as possible retained from the first step (same session id, etc).
+
 ### Base Model Performance
 [Base Model Analysis](ANALYZE_BASE_MODELS.md)
 
@@ -165,13 +202,6 @@ I've only run this for a set of select problems where it seems to help a lot, bu
 - I have not yet explored the performance increase from having multiple representations present at the same time
 - Conclusion: For now, will use CSV grid format only, and later on explore problem-specific representations (sparse, object, diff, image, etc)
 
-### Strategy Extraction
-[Strategy Extraction Analysis](ANALYZE_STRATEGY_EXTRACTION.md)
-
-In order to refine the results we need to introduce a concept of "strategy" (or explanation) of why the model has chosen to come to a certain answer/conclusion. This "strategy" works like a guide that can be applied to other test cases thereby enabling us to validate responses, either through testing it on the supplied test data or on synthetic data. Or even by building up a library of strategies from solved problems, generalizing them and mapping them to identifyable traits of problems to supply strategies at solution time for unknown problems.
-
-I tested several approaches of getting a "strategy" out of the model. Many had an actual performance implication by affecting the reasoning, through a distraction or deterioration of the spacial reasoning. In the end, the best proved to be a two stage prompt approach where the first stage outputs the solution, and a second stage outputs the strategy with as much context as possible retained from the first step (same session id, etc).
-
 ### Strategy Usage
 [Strategy Usage Analysis](ANALYZE_STRATEGY.md)
 
@@ -183,32 +213,3 @@ gpt-5.1-medium is very good with explicit strategies that are unique to the prob
 
 gpt-5.1-high is already very high performant but with and explicit strategy problems that it previously couldn't solve become solvable. This suggests that the model isn't failing because it has some inherit inabilities (e.g. certain transforms not possible). It likely can also make previously unsolvable problem solvable simply by hints, but the specificity required of these hints requires further research.
 
-### Answer Verification
-[Answer Verification Analysis](ANALYZE_VERIFICATION.md)
-
-A key thing to devising the overall approach to solving the problems is to know when the problem has been solved, and ideally do so with high confidence. To do this, I've attempted an approach of replaying test cases with synthetic data expansion selectively. I've done this tuning for precision (e.g. avoiding falsely verifying answer that turn out to be wrong).
-
-When saying something is verified it truly is correct ~94% of the time (precision) on problems that reasonably could be truly solved, while falsely setting them as not verified when they actually were true ~50% of the time (1-recall). On the full sample though, the precision is closer to 90-100%, but the recall drops downwards of 25-30%.
-
-To ensure the precision truly approaches 100% I'm going to add in that the solution needs to be run twice with matching grids together with a perfect score on the test data with synthetic expansion. Later on I'll train a model to actually predict the likelihood of a true PASS based on all the testing done up to then.
-
-### Deep Think Trigger
-[Deep Think Trigger Analysis](https://github.com/beetree/ARC-AGI/blob/main/ANALYZE_DEEP_THINK_TRIGGER.md)
-
-It seems that attempting to trigger deeper thinking does not actually yield any deeper thinking. The models themselves already trigger a very deep (deepest possible?) think by themselves.
-
-### Multi modal, adding images
-[Multi modal, adding images Analysis](ANALYZE_MULTIMODAL_IMAGES.md)
-
-The models does some reasoning better based on images. Therefore we should either supply the images directly to the model, or do it in two stages to extract new insights through an image-only prompt that we then supply to a second stage text-only prompt that solves the problem.
-
-Testing supplying the images directly using different types of generated images does not seem to be helpful in solving the harder problems.
-
-### Visual Hints
-[Visual Hints Analysis](ANALYZE_VISUAL_HINTS.md)
-
-With explicit but condensed solution instructions there is a material improvement in performance (~5pp) of which maybe half stays even with condensed hints that plausibly could be deduced in some general way.
-
-It is very hard to extract hints that are non-obvious. The observations / transformations that I manage to extract are most of the time only 80% of the solution, and the missing ~20% are the "gotchas" that the models really need to move the needle - they already know "the 80%".
-
-Thereby, it doesn't seem that the hints are truly helping.
