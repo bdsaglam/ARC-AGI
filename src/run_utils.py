@@ -329,7 +329,16 @@ def pick_solution_v2(candidates_object, reasoning_store, task, test_index, opena
     # Sort by count desc, then by score desc
     candidates_by_consensus = sorted(candidates_list, key=lambda c: (c['count'], scores[c['id']]), reverse=True)
     attempt_1_candidate = candidates_by_consensus[0]
-    print(f"[pick_solution_v2] Attempt 1 (Consensus): Candidate {attempt_1_candidate['id']} (Votes: {attempt_1_candidate['count']}, Score: {scores[attempt_1_candidate['id']]})")
+    
+    # Determine if it was a tie-break
+    is_tie_break = False
+    if len(candidates_by_consensus) > 1:
+        second_best = candidates_by_consensus[1]
+        if second_best['count'] == attempt_1_candidate['count']:
+            is_tie_break = True
+            
+    label = "Consensus (Tie-Break by Score)" if is_tie_break else "Consensus (Vote)"
+    print(f"[pick_solution_v2] Attempt 1 ({label}): Candidate {attempt_1_candidate['id']} (Votes: {attempt_1_candidate['count']}, Score: {scores[attempt_1_candidate['id']]})")
 
     # 5. Determine Attempt 2 (Auditor)
     # Sort candidates by Max Score
@@ -386,7 +395,21 @@ def pick_solution_v2(candidates_object, reasoning_store, task, test_index, opena
     
     for i, group in enumerate(top_groups):
         correctness = group.get("is_correct")
-        role = "Consensus" if i == 0 else "Auditor"
+        role = "Auditor"
+        if i == 0:
+            # Re-derive the label logic for consistency in final output
+            # (In a real refactor, we'd pass this label down, but this is quick and safe)
+            # We know attempt_1_candidate corresponds to top_groups[0]
+            role = "Consensus (Vote)"
+            # Check for tie again based on the original candidates_list logic
+            # Since we don't have the full sorted list here easily without re-sorting,
+            # we can rely on the fact that if we are here, we are printing the result.
+            # However, for perfect accuracy, let's just use a generic "Consensus" label here 
+            # OR typically we assume the user saw the log above.
+            # But you asked to rename it. 
+            # Let's pass the label from above.
+            role = label # using the 'label' variable defined in the previous block scope
+
         print(f"Attempt {i+1} ({role}) Correctness: {correctness}")
         
         if correctness is None:
