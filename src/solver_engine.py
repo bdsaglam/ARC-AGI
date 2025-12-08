@@ -336,19 +336,27 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
         with ThreadPoolExecutor(max_workers=4) as executor:
             futures = []
             
-            # Define the unique set of solvers (one of each type)
-            unique_solvers = ["claude-opus-4.5-thinking-60000", "gpt-5.1-high", "gemini-3-high"]
+            if is_testing:
+                # Testing models
+                gen_gemini = "gemini-3-low"
+                gen_opus = "claude-opus-4.5-thinking-4000"
+                unique_solvers = ["claude-opus-4.5-no-thinking", "gpt-5.1-none", "gemini-3-low"]
+            else:
+                # Production models
+                gen_gemini = "gemini-3-high"
+                gen_opus = "claude-opus-4.5-thinking-60000"
+                unique_solvers = ["claude-opus-4.5-thinking-60000", "gpt-5.1-high", "gemini-3-high"]
             
             if objects_only:
-                 futures.append(executor.submit(run_objects_pipeline_variant, "gemini-3-high", "gemini_gen", unique_solvers))
-                 futures.append(executor.submit(run_objects_pipeline_variant, "claude-opus-4.5-thinking-60000", "opus_gen", unique_solvers))
+                 futures.append(executor.submit(run_objects_pipeline_variant, gen_gemini, "gemini_gen", unique_solvers))
+                 futures.append(executor.submit(run_objects_pipeline_variant, gen_opus, "opus_gen", unique_solvers))
             else:
                 futures = [
                     executor.submit(run_deep_thinking_step),
                     executor.submit(run_image_step, common_image_path),
                     executor.submit(run_hint_step, common_image_path),
-                    executor.submit(run_objects_pipeline_variant, "gemini-3-high", "gemini_gen", unique_solvers),
-                    executor.submit(run_objects_pipeline_variant, "claude-opus-4.5-thinking-60000", "opus_gen", unique_solvers)
+                    executor.submit(run_objects_pipeline_variant, gen_gemini, "gemini_gen", unique_solvers),
+                    executor.submit(run_objects_pipeline_variant, gen_opus, "opus_gen", unique_solvers)
                 ]
                 
             for future in as_completed(futures):
