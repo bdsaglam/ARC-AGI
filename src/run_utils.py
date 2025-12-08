@@ -192,12 +192,6 @@ def pick_solution_v2(candidates_object, reasoning_store, task, test_index, opena
             if model_id in reasoning_store:
                 cand["reasoning"][model_id] = reasoning_store[model_id]
 
-    # 2. Determine Attempt 1 (Consensus)
-    # Sort by count desc
-    candidates_by_consensus = sorted(candidates_list, key=lambda c: c['count'], reverse=True)
-    attempt_1_candidate = candidates_by_consensus[0]
-    print(f"[pick_solution_v2] Attempt 1 (Consensus): Candidate {attempt_1_candidate['id']} (Votes: {attempt_1_candidate['count']})")
-
     # 3. Build Prompts
     # Logic Prompt
     logic_parts = []
@@ -330,6 +324,12 @@ def pick_solution_v2(candidates_object, reasoning_store, task, test_index, opena
             cid = c.get("candidate_id")
             if cid in scores:
                 scores[cid] = max(scores[cid], c.get("score", 0))
+
+    # 2. Determine Attempt 1 (Consensus)
+    # Sort by count desc, then by score desc
+    candidates_by_consensus = sorted(candidates_list, key=lambda c: (c['count'], scores[c['id']]), reverse=True)
+    attempt_1_candidate = candidates_by_consensus[0]
+    print(f"[pick_solution_v2] Attempt 1 (Consensus): Candidate {attempt_1_candidate['id']} (Votes: {attempt_1_candidate['count']}, Score: {scores[attempt_1_candidate['id']]})")
 
     # 5. Determine Attempt 2 (Auditor)
     # Sort candidates by Max Score
