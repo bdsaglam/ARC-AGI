@@ -1,6 +1,7 @@
 import re
 import json
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
 from src.models import call_model
 
@@ -73,7 +74,7 @@ Return a single JSON object with the following structure:
         "summary": "Rule matches main behaviors across examples; minor ambiguity in example 3."
       },
       "test_grid_consistency": "Plausible",
-      "rule_summary": "Short, 1–3 sentence description of this candidate's representative rule."
+      "rule_summary": "Short, 1-3 sentence description of this candidate's representative rule."
     },
     {
       "candidate_id": 1,
@@ -84,7 +85,7 @@ Return a single JSON object with the following structure:
           "1": "Partial",
           "2": "Fail"
         },
-        "summary": "Contradiction in example 2; seems overfitted"
+        "summary": "Contradiction in example 2; seems overfit"
       }
     }
   ]
@@ -99,9 +100,9 @@ Your primary ability is NOT to solve new ARC tasks from scratch.
 Instead, you are excellent at:
 - Checking whether a proposed rule is logically consistent
 - Verifying that a rule matches known solved examples
-- Verifying that a candidate’s test output actually follows its own stated rule
+- Verifying that a candidate's test output actually follows its own stated rule
 
-You are skeptical and detail-oriented. If a candidate’s explanation says X
+You are skeptical and detail-oriented. If a candidate's explanation says X
 but the examples show not-X, you must call that out.
 </SYSTEM_ROLE>"""
 
@@ -124,15 +125,15 @@ You must behave as an AUDITOR, not a solver.
 
 Your overall goal:
 - For each candidate, choose a representative explanation and treat it as that
-  candidate’s proposed rule.
+  candidate's proposed rule.
 - Audit that rule against all training examples.
-- Check whether the candidate’s predicted test OUTPUT_GRID actually follows
+- Check whether the candidate's predicted test OUTPUT_GRID actually follows
   that rule.
 - Assign each candidate a score from 0 to 10 and rank all candidates.
 
 Follow these steps:
 
-STEP 1 — CHOOSE A REPRESENTATIVE RULE PER CANDIDATE
+STEP 1 -- CHOOSE A REPRESENTATIVE RULE PER CANDIDATE
 For each CANDIDATE:
 
   1. It may have multiple ANSWER blocks, all with the same OUTPUT_GRID.
@@ -141,12 +142,12 @@ For each CANDIDATE:
        - most complete,
        - least self-contradictory,
        - easiest to understand.
-  3. Treat that explanation as the candidate’s rule. 
-  4. Treat the OUTPUT_GRID from any ANSWER as the candidate’s predicted
+  3. Treat that explanation as the candidate's rule. 
+  4. Treat the OUTPUT_GRID from any ANSWER as the candidate's predicted
      test output (they are guaranteed identical within that candidate).
 
-STEP 2 — EXAMPLE CONSISTENCY AUDIT (DO NOT USE THE TEST INPUT HERE)
-For each candidate’s representative rule:
+STEP 2 -- EXAMPLE CONSISTENCY AUDIT (DO NOT USE THE TEST INPUT HERE)
+For each candidate's representative rule:
 
   1. Using only the training examples:
      For each TRAIN_EXAMPLE (in index order: 1, 2, 3, ...):
@@ -169,27 +170,27 @@ For each candidate’s representative rule:
      - How well does this rule fit the *set* of training examples taken together?
      - Does the rule feel overfitted, overcomplicated, or ad hoc?
 
-STEP 3 — RULE-TO-TEST-GRID CONSISTENCY
+STEP 3 -- RULE-TO-TEST-GRID CONSISTENCY
 For each candidate:
 
   1. Take its representative rule (from STEP 1).
   2. Apply the rule *conceptually* to the TEST_INPUT:
      - You do not need to compute a perfect output from scratch;
        focus on key structural consequences of the rule.
-  3. Check whether the candidate’s test OUTPUT_GRID is a reasonable outcome
+  3. Check whether the candidate's test OUTPUT_GRID is a reasonable outcome
      of that rule.
      - If the grid blatantly violates the described rule, mark this as a
        contradiction.
      - If the grid is broadly consistent, mark it as plausible.
 
-STEP 4 — SCORING AND GLOBAL RANKING
+STEP 4 -- SCORING AND GLOBAL RANKING
 
 For each candidate, assign a numeric SCORE from 0 to 10:
   - 10: Rule is simple and coherent, strongly consistent with all training
         examples, and the test grid fits the rule.
-  - 7–9: Mostly consistent with examples; minor ambiguities or small issues.
-  - 4–6: Some consistency, but noticeable contradictions or hand-wavy parts.
-  - 1–3: Major contradictions with examples or test grid; rule not credible.
+  - 7-9: Mostly consistent with examples; minor ambiguities or small issues.
+  - 4-6: Some consistency, but noticeable contradictions or hand-wavy parts.
+  - 1-3: Major contradictions with examples or test grid; rule not credible.
   - 0: Completely incompatible with examples; or explanation is nonsense.
 
 Then:
@@ -204,6 +205,7 @@ Return a single JSON object with the following structure:
     {
       "candidate_id": 0,
       "score": 8.7,
+      "tier": "GOLD",
       "example_audit": {
         "per_example": {
           "1": "Pass",
@@ -214,11 +216,12 @@ Return a single JSON object with the following structure:
         "summary": "Rule matches main behaviors across examples; minor ambiguity in example 3."
       },
       "test_grid_consistency": "Plausible",
-      "rule_summary": "Short, 1–3 sentence description of this candidate's representative rule."
+      "rule_summary": "Short, 1-3 sentence description of this candidate's representative rule."
     },
     {
       "candidate_id": 1,
       "score": 6.0,
+      "tier": "INVALID",
       "example_audit": {
         "per_example": {
           "1": "Partial",
@@ -460,7 +463,7 @@ def pick_solution_v2(candidates_object, reasoning_store, task, test_index, opena
         logic_parts.append("<PROPOSED_SOLUTION>")
         logic_parts.append(grid_to_string(cand['grid']))
         logic_parts.append("</PROPOSED_SOLUTION>")
-        for j, model_id in enumerate(cand['models'][:3]):
+        for j, model_id in enumerate(cand['models']): # Removed [:3] slice
             alias = chr(65 + j)
             logic_parts.append(f'<REASONING_MODEL_{alias} model_id="{model_id}">')
             reasoning = cand['reasoning'].get(model_id, "(Reasoning not found)")
@@ -501,15 +504,17 @@ def pick_solution_v2(candidates_object, reasoning_store, task, test_index, opena
     for cand in candidates_list:
         c_id = cand['id']
         cons_parts.append(f'  <CANDIDATE id="{c_id}">')
-        for j, model_id in enumerate(cand['models'][:3]):
+        for j, model_id in enumerate(cand['models']): # Removed [:3] slice
             alias = chr(65 + j)
-            cons_parts.append(f'    <EXPLANATION_{alias}>')
+            cons_parts.append(f'    <ANSWER id="{alias}" model_id="{model_id}">') # Replicated ANSWER tag structure
+            cons_parts.append(f'      <EXPLANATION>')
             reasoning = cand['reasoning'].get(model_id, "(Reasoning not found)")
             cons_parts.append(reasoning)
-            cons_parts.append(f'    </EXPLANATION_{alias}>')
-            cons_parts.append(f'    <TEST_OUTPUT_GRID>')
+            cons_parts.append(f'      </EXPLANATION>')
+            cons_parts.append(f'      <OUTPUT_GRID>')
             cons_parts.append(grid_to_csv_rows(cand['grid']))
-            cons_parts.append(f'    </TEST_OUTPUT_GRID>')
+            cons_parts.append(f'      </OUTPUT_GRID>')
+            cons_parts.append(f'    </ANSWER>')
         cons_parts.append(f'  </CANDIDATE>')
     cons_parts.append("</CANDIDATES>\n")
     
@@ -525,45 +530,41 @@ def pick_solution_v2(candidates_object, reasoning_store, task, test_index, opena
     logic_data = { "prompt": full_prompt_logic, "response": None, "parsed": None }
     cons_data = { "prompt": full_prompt_cons, "response": None, "parsed": None }
 
-    # -- Logic Judge --
-    print("\n[pick_solution_v2] Running Logic Judge (gemini-3-low)...")
-    try:
-        resp_logic = call_model(openai_client, anthropic_client, google_keys, full_prompt_logic, "gemini-3-low").text
-        print("\n=== LOGIC JUDGE RESPONSE ===\n" + resp_logic + "\n============================")
-        logic_data["response"] = resp_logic
-        
-        json_match = re.search(r"\{.*\}", resp_logic, re.DOTALL)
-        if json_match:
-            logic_json = json.loads(json_match.group(0))
-            logic_data["parsed"] = logic_json
-            if "candidates" in logic_json:
-                for c in logic_json["candidates"]:
-                    cid = c.get("candidate_id")
-                    if cid in scores:
-                        scores[cid] = max(scores[cid], c.get("score", 0))
-    except Exception as e:
-        print(f"[pick_solution_v2] Logic Judge Error: {e}")
-        logic_data["error"] = str(e)
+    def run_judge(judge_name, prompt, data_holder):
+        print(f"\n[pick_solution_v2] Running {judge_name} Judge (gemini-3-high)...")
+        try:
+            response_obj = call_model(openai_client, anthropic_client, google_keys, prompt, "gemini-3-high")
+            data_holder["response"] = response_obj.text
+            
+            json_match = re.search(r"\{.*\}", response_obj.text, re.DOTALL)
+            if json_match:
+                parsed_json = json.loads(json_match.group(0))
+                data_holder["parsed"] = parsed_json
+                return parsed_json
+        except Exception as e:
+            print(f"[pick_solution_v2] {judge_name} Judge Error: {e}")
+            data_holder["error"] = str(e)
+        return None
 
-    # -- Consistency Judge --
-    print("\n[pick_solution_v2] Running Consistency Judge (gemini-3-low)...")
-    try:
-        resp_cons = call_model(openai_client, anthropic_client, google_keys, full_prompt_cons, "gemini-3-low").text
-        print("\n=== CONSISTENCY JUDGE RESPONSE ===\n" + resp_cons + "\n==================================")
-        cons_data["response"] = resp_cons
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_logic = executor.submit(run_judge, "Logic", full_prompt_logic, logic_data)
+        future_cons = executor.submit(run_judge, "Consistency", full_prompt_cons, cons_data)
         
-        json_match = re.search(r"\{.*\}", resp_cons, re.DOTALL)
-        if json_match:
-            cons_json = json.loads(json_match.group(0))
-            cons_data["parsed"] = cons_json
-            if "candidates" in cons_json:
-                for c in cons_json["candidates"]:
-                    cid = c.get("candidate_id")
-                    if cid in scores:
-                        scores[cid] = max(scores[cid], c.get("score", 0))
-    except Exception as e:
-        print(f"[pick_solution_v2] Consistency Judge Error: {e}")
-        cons_data["error"] = str(e)
+        logic_res = future_logic.result()
+        cons_res = future_cons.result()
+
+    # Update Scores based on results
+    if logic_res and "candidates" in logic_res:
+        for c in logic_res["candidates"]:
+            cid = c.get("candidate_id")
+            if cid in scores:
+                scores[cid] = max(scores[cid], c.get("score", 0))
+    
+    if cons_res and "candidates" in cons_res:
+        for c in cons_res["candidates"]:
+            cid = c.get("candidate_id")
+            if cid in scores:
+                scores[cid] = max(scores[cid], c.get("score", 0))
 
     # 5. Determine Attempt 2 (Auditor)
     # Sort candidates by Max Score

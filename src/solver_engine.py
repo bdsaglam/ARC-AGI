@@ -186,10 +186,10 @@ def run_solver_mode(task_id: str, test_index: int, verbose: bool, is_testing: bo
                 
             finish_log = {
                 "candidates_object": {str(k): v for k, v in candidates_object.items()},
+                "selection_details": selection_metadata,
                 "picked_solutions": picked_solutions,
-                "result": outcome,
                 "correct_solution": test_example.output,
-                "selection_details": selection_metadata
+                "result": outcome
             }
             write_step_log("step_finish", finish_log, run_timestamp)
             print_summary()
