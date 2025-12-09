@@ -15,7 +15,7 @@ from src.tasks import load_task
 from src.models import call_model
 from src.models import parse_model_arg
 from src.logging import setup_logging, get_logger
-from src.utils import format_grid
+from src.grid import format_grid
 import httpx
 from openai import OpenAI
 from anthropic import Anthropic

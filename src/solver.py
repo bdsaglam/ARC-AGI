@@ -16,7 +16,7 @@ from src.models import (
 )
 from src.types import TaskResult
 from src.tasks import load_task, build_prompt
-from src.utils import (
+from src.grid import (
     parse_grid_from_text,
     verify_prediction,
 )

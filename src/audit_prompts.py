@@ -1,4 +1,4 @@
-from src.utils import grid_to_string, grid_to_csv_rows
+from src.grid import grid_to_string, grid_to_csv_rows
 from src.audit_templates_logic import (
     PROMPT_LOGIC_SYSTEM_ROLE,
     PROMPT_LOGIC_INSTRUCTIONS

@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
-from src.utils import parse_grid_from_text
+from src.grid import parse_grid_from_text
 
 def debug(txt_file):
     with open(txt_file, 'r') as f:

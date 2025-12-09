@@ -7,7 +7,7 @@ from pathlib import Path
 # Add project root to sys.path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.utils import parse_grid_from_text
+from src.grid import parse_grid_from_text
 
 GRID_CASES_DIR = Path(__file__).parent / "grid_parsing_cases"
 

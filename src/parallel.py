@@ -11,7 +11,7 @@ from anthropic import Anthropic
 from google import genai
 
 from src.models import call_model, parse_model_arg, calculate_cost
-from src.utils import parse_grid_from_text, verify_prediction
+from src.grid import parse_grid_from_text, verify_prediction
 from src.rate_limiter import RateLimiter
 from src.config import PROVIDER_RATE_LIMITS
 from src.logging import log_failure

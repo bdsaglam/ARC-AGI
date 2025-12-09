@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
-from src.utils import Grid, format_grid
+from src.grid import Grid, format_grid
 
 @dataclass
 class Example:

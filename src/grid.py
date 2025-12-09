@@ -1,4 +1,5 @@
 from typing import List, Optional
+import re
 
 Grid = List[List[int]]
 
@@ -39,7 +40,6 @@ def parse_grid_from_text(text: str) -> Grid:
 
         # Ignore explicit row labels which confuse the parser (e.g. "Row 1:", "Row 10")
         # if they stand alone on a line.
-        import re
         if re.match(r'^Row\s+\d+:?$', stripped, re.IGNORECASE):
             candidate_rows.append(None)
             continue
@@ -65,7 +65,6 @@ def parse_grid_from_text(text: str) -> Grid:
                     clean_line = clean_line.split(":")[-1].strip()
                 
                 # 2. Fallback: Try to find the first digit and parse from there
-                import re
                 match = re.search(r'\d', clean_line)
                 if match:
                     sub = clean_line[match.start():]
