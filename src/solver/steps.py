@@ -75,8 +75,8 @@ def run_step_5(state, models, hint_model, objects_only=False):
     counters = {
         'deep': n_models,
         'image': n_models,
-        'hint': n_models,
-        'objects': n_objects_models * 2 # 2 variants
+        'hint': n_models + 1,
+        'objects': (n_objects_models + 2) * 2 # 2 variants * (Extract + Transform + Solvers)
     }
     
     if objects_only:
