@@ -2,7 +2,6 @@ import sys
 import time
 from pathlib import Path
 from src.solver_engine import run_solver_mode
-from src.default_engine import run_default_mode
 from src.logging import PrefixedStdout
 from src.parallel import set_rate_limit_scaling
 
@@ -19,10 +18,6 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
         
     task_id = task_path.stem
     
-    # Update args for default mode compatibility
-    args.task = str(task_path)
-    args.test = test_index
-    
     predictions = None
 
     if quiet:
@@ -32,24 +27,20 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
         sys.stdout = devnull
         sys.stderr = devnull
         try:
-            if args.solver or args.solver_testing:
-                predictions = run_solver_mode(
-                    task_id, test_index, args.verbose, 
-                    is_testing=args.solver_testing, 
-                    run_timestamp=run_timestamp, 
-                    task_path=task_path, 
-                    progress_queue=progress_queue, 
-                    answer_path=answer_path,
-                    step_5_only=args.step_5_only,
-                    objects_only=args.objects_only,
-                    force_step_5=args.force_step_5,
-                    force_step_2=args.force_step_2,
-                    judge_model=args.judge_model,
-                    old_pick_solution=args.old_pick_solution
-                )
-            else:
-                # default mode doesn't support progress_queue yet, so it will just run silently if quiet=True
-                predictions = run_default_mode(args, answer_path=answer_path)
+            predictions = run_solver_mode(
+                task_id, test_index, args.verbose, 
+                is_testing=args.solver_testing, 
+                run_timestamp=run_timestamp, 
+                task_path=task_path, 
+                progress_queue=progress_queue, 
+                answer_path=answer_path,
+                step_5_only=args.step_5_only,
+                objects_only=args.objects_only,
+                force_step_5=args.force_step_5,
+                force_step_2=args.force_step_2,
+                judge_model=args.judge_model,
+                old_pick_solution=args.old_pick_solution
+            )
         except Exception as e:
              # If we have a queue, try to report the crash
             if progress_queue:
@@ -75,23 +66,20 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
         prefix = f"{task_id}:{test_index} ".ljust(13)
         with PrefixedStdout(prefix):
             try:
-                if args.solver or args.solver_testing:
-                    predictions = run_solver_mode(
-                        task_id, test_index, args.verbose, 
-                        is_testing=args.solver_testing, 
-                        run_timestamp=run_timestamp, 
-                        task_path=task_path, 
-                        progress_queue=progress_queue, 
-                        answer_path=answer_path,
-                        step_5_only=args.step_5_only,
-                        objects_only=args.objects_only,
-                        force_step_5=args.force_step_5,
-                        force_step_2=args.force_step_2,
-                        judge_model=args.judge_model,
-                        old_pick_solution=args.old_pick_solution
-                    )
-                else:
-                    predictions = run_default_mode(args, answer_path=answer_path)
+                predictions = run_solver_mode(
+                    task_id, test_index, args.verbose, 
+                    is_testing=args.solver_testing, 
+                    run_timestamp=run_timestamp, 
+                    task_path=task_path, 
+                    progress_queue=progress_queue, 
+                    answer_path=answer_path,
+                    step_5_only=args.step_5_only,
+                    objects_only=args.objects_only,
+                    force_step_5=args.force_step_5,
+                    force_step_2=args.force_step_2,
+                    judge_model=args.judge_model,
+                    old_pick_solution=args.old_pick_solution
+                )
             except Exception as e:
                 raise e
     
