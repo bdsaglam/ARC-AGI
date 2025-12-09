@@ -6,11 +6,11 @@ from src.solver.state import SolverState
 from src.solver.steps import run_step_1, run_step_3, run_step_5, check_is_solved
 
 # Re-export run_solver_mode for backward compatibility if imported elsewhere
-def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, progress_queue=None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False, force_step_2: bool = False, judge_model: str = "gemini-3-high", old_pick_solution: bool = False):
+def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, progress_queue=None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False, force_step_2: bool = False, judge_model: str = "gemini-3-high", old_pick_solution: bool = False, task_status=None):
     
     # Initialize State
     try:
-        state = SolverState(task_id, test_index, verbose, is_testing, run_timestamp, task_path, progress_queue, answer_path, judge_model, old_pick_solution=old_pick_solution)
+        state = SolverState(task_id, test_index, verbose, is_testing, run_timestamp, task_path, progress_queue, answer_path, judge_model, old_pick_solution=old_pick_solution, task_status=task_status)
         state.reporter.emit("RUNNING", "Initializing", event="START")
     except Exception as e:
         print(f"Error initializing solver state: {e}", file=sys.stderr)
@@ -38,6 +38,7 @@ def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: boo
             run_step_1(state, models_step1)
 
             # STEP 2
+            state.set_status(step=2)
             finish, _ = check_is_solved(state, "step_2", force_finish=force_step_2, continue_if_solved=force_step_5)
             if finish:
                 return state.finalize("step_finish")
@@ -46,6 +47,7 @@ def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: boo
             run_step_3(state, models_step3)
 
             # STEP 4
+            state.set_status(step=4)
             finish, _ = check_is_solved(state, "step_4", continue_if_solved=force_step_5)
             if finish:
                 return state.finalize("step_finish")
@@ -56,7 +58,6 @@ def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: boo
         run_step_5(state, models_step5, hint_generation_model, objects_only=objects_only)
 
         # STEP FINISH
-        print("\n--- STEP FINISH: Pick and print solution ---")
         return state.finalize("step_finish")
         
     except Exception as e:

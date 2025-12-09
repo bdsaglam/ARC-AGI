@@ -11,7 +11,7 @@ from src.reporting import ProgressReporter, print_solver_summary
 from src.logging import setup_logging, write_step_log, PrefixedStdout
 
 class SolverState:
-    def __init__(self, task_id: str, test_index: int, verbose: int, is_testing: bool, run_timestamp: str, task_path: Path = None, progress_queue=None, answer_path: Path = None, judge_model: str = "gemini-3-high", old_pick_solution: bool = False):
+    def __init__(self, task_id: str, test_index: int, verbose: int, is_testing: bool, run_timestamp: str, task_path: Path = None, progress_queue=None, answer_path: Path = None, judge_model: str = "gemini-3-high", old_pick_solution: bool = False, task_status=None):
         self.task_id = task_id
         self.test_index = test_index
         self.verbose = verbose
@@ -21,6 +21,10 @@ class SolverState:
         self.answer_path = answer_path
         self.judge_model = judge_model
         self.old_pick_solution = old_pick_solution
+        self.task_status = task_status if task_status is not None else {}
+        self.task_status.setdefault('step', '0')
+        self.task_status.setdefault('phase', 'Init')
+        self.task_status.setdefault('start_time', time.time())
         
         self.reporter = ProgressReporter(progress_queue, task_id, test_index)
         setup_logging(verbose)
@@ -49,6 +53,12 @@ class SolverState:
         if test_idx < 0 or test_idx >= len(self.task.test):
             raise ValueError(f"Test index {test_index} is out of range.")
         self.test_example = self.task.test[test_idx]
+
+    def set_status(self, step=None, phase=None):
+        if step is not None:
+            self.task_status['step'] = str(step)
+        if phase is not None:
+            self.task_status['phase'] = phase
 
     def close(self):
         self.http_client.close()
@@ -124,8 +134,10 @@ class SolverState:
             "result": outcome
         }
         self.log_step(step_log_name, finish_log)
-        with PrefixedStdout("(step finish): ".ljust(16)):
-            self.print_summary(outcome)
+        
+        self.set_status(phase="Finished")
+        self.print_summary(outcome)
+        
         self.close()
         self.reporter.emit("COMPLETED", "Finished", outcome=outcome, event="FINISH", predictions=picked_solutions)
         return picked_solutions

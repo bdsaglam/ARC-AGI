@@ -49,8 +49,9 @@ def setup_logging(verbose: int = 0) -> logging.Logger:
     return logger
 
 class PrefixedStdout:
-    def __init__(self, prefix):
+    def __init__(self, prefix, message_width=None):
         self.prefix = prefix
+        self.message_width = message_width
         self.original_stdout = sys.stdout
         self.at_line_start = True
 
@@ -68,8 +69,15 @@ class PrefixedStdout:
             
             if line:
                 if self.at_line_start:
-                    self.original_stdout.write(self.prefix)
+                    if callable(self.prefix):
+                        p = self.prefix()
+                    else:
+                        p = self.prefix
+                    self.original_stdout.write(p)
                     self.at_line_start = False
+                
+                if self.message_width and len(line) > self.message_width:
+                    line = line[:self.message_width - 3] + "..."
                 self.original_stdout.write(line)
         
     def flush(self):

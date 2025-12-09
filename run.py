@@ -70,8 +70,10 @@ def main():
     
     if args.solver_testing:
         print("Solver testing mode activated.")
+        print()
     else:
         print("Solver mode activated.")
+        print()
     
     warnings.filterwarnings("ignore", message=r"Pydantic serializer warnings:", category=UserWarning)
 
@@ -115,6 +117,7 @@ def main():
         total_tasks = len(tasks_to_run)
         print(f"Found {len(task_files)} task files. Total test cases: {total_tasks}")
         print(f"Starting batch execution with {args.task_workers} parallel task workers...")
+        print()
         
         rate_limit_scale = 1.0 / max(1, args.task_workers)
         
@@ -134,6 +137,12 @@ def main():
             if answers_dir:
                  answer_path = answers_dir / task_path.name
             
+            # Print Table Header
+            print("Legend: ⚡ Running   ⏳ Queued   ✅ Done")
+            print()
+            print("| Status        | Task:Test  | Step  | Phase           | Time   | Message")
+            print("|---------------|------------|-------|-----------------|--------|------------------------------")
+
             execute_task(args, task_path, args.test, run_timestamp, answer_path=answer_path)
         except FileNotFoundError as e:
              print(f"Error: {e}", file=sys.stderr)
