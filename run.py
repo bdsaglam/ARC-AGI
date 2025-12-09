@@ -33,6 +33,7 @@ def main():
     parser.add_argument("--test", type=int, default=1, help="Test case index (1-based, default: 1). Ignored if --task-directory is used.")
     parser.add_argument("--workers", type=int, default=10, help="Number of parallel workers (default: 10) PER TASK.")
     parser.add_argument("--task-workers", type=int, default=20, help="Number of tasks to run in parallel (default: 20). CAUTION: Divides global rate limits by this factor.")
+    parser.add_argument("--task-limit", type=int, default=None, help="Limit the number of tasks to run (useful for testing batch mode).")
     parser.add_argument("--objects", action="store_true", help="Run a 3-step pipeline: Extraction -> Transformation -> Solution.")
     parser.add_argument("--step-5-only", action="store_true", help="Run only Step 5 (Full Search) of the solver.")
     parser.add_argument("--objects-only", action="store_true", help="Run only the Objects Pipeline sub-strategy in Step 5.")
@@ -101,9 +102,14 @@ def main():
             print(f"No JSON files found in '{directory}'.", file=sys.stderr)
             sys.exit(0)
             
+        task_files = sorted(task_files)
+        if args.task_limit:
+            print(f"Limiting execution to first {args.task_limit} tasks.")
+            task_files = task_files[:args.task_limit]
+
         # Prepare tasks
         tasks_to_run = []
-        for task_file in sorted(task_files):
+        for task_file in task_files:
             try:
                 # Load task briefly just to count tests, we load again in worker
                 # We don't need answer path here strictly, but good to know

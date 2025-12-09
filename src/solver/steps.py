@@ -10,7 +10,7 @@ from src.solver.pipelines import run_objects_pipeline_variant
 
 def run_step_1(state, models):
     state.set_status(step=1, phase="Shallow search")
-    print(" ")
+    print("Broad search")
     state.reporter.emit("RUNNING", "(Shallow search)", event="STEP_CHANGE")
     step_1_log = {}
     if state.verbose >= 1:
@@ -22,7 +22,7 @@ def run_step_1(state, models):
 
 def run_step_3(state, models):
     state.set_status(step=3, phase="Extended search")
-    print(" ")
+    print("Narrowing in...")
     state.reporter.emit("RUNNING", "(Extended search)", event="STEP_CHANGE")
     step_3_log = {}
     if state.verbose >= 1:
@@ -34,31 +34,29 @@ def run_step_3(state, models):
 
 def check_is_solved(state, step_name, force_finish=False, continue_if_solved=False):
     state.set_status(phase="Eval")
-    print(" ")
     state.reporter.emit("RUNNING", f"(Evaluation)", event="STEP_CHANGE")
     solved = is_solved(state.candidates_object)
     log = {"candidates_object": {str(k): v for k, v in state.candidates_object.items()}, "is_solved": solved}
     state.log_step(step_name, log)
 
-    if force_finish:
-        if state.verbose >= 1:
-            print(f"--force-step-2 is active. Moving to STEP FINISH.")
-        return True, True # (finish_now, success) - success status is determined by finalize
-
     if solved:
         if continue_if_solved:
-                print("is_solved() is TRUE, but continuing as requested.")
-                return False, True
+             print("Likely solution, continuing")
+             return False, True
         else:
-            if state.verbose >= 1:
-                print("is_solved() is TRUE, moving to STEP FINISH.")
+            print("Likely solution, exiting")
             return True, True
+
+    if force_finish:
+        print("No solution, exiting (forced)")
+        return True, True # (finish_now, success) - success status is determined by finalize
     
+    print("No solution, continuing")
     return False, False
 
 def run_step_5(state, models, hint_model, objects_only=False):
     state.set_status(step=5, phase="Full search")
-    print(" ")
+    print("Going deep...")
     state.reporter.emit("RUNNING", "(Full search)", event="STEP_CHANGE")
     step_5_log = {"trigger-deep-thinking": {}, "image": {}, "generate-hint": {}, "objects_pipeline": {}}
 
@@ -111,7 +109,7 @@ def run_step_5(state, models, hint_model, objects_only=False):
             gen_gemini = "gemini-3-high"
             gen_opus = "claude-opus-4.5-thinking-60000"
             unique_solvers = ["claude-opus-4.5-thinking-60000", "gpt-5.1-high", "gemini-3-high"]
-        
+            
         if objects_only:
              futures.append(executor.submit(run_objects_pipeline_variant, state, gen_gemini, "gemini_gen", unique_solvers))
              futures.append(executor.submit(run_objects_pipeline_variant, state, gen_opus, "opus_gen", unique_solvers))

@@ -150,4 +150,4 @@ class ProgressReporter:
         })
 
 def print_solver_summary(duration: float, total_cost: float, outcome: str) -> None:
-    print(f"{outcome} ({duration:.2f}s, ${total_cost:.4f})")
+    print(f"{outcome} (${total_cost:.4f})")
