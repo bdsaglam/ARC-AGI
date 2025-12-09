@@ -158,7 +158,7 @@ So the output grid is identical to the input grid.
 This is a mistake that several models end up doing, therefore there's a cluster of solutions around bad answers.
 
 ### Visual Hints
-[Visual Hints Analysis](ANALYZE_VISUAL_HINTS.md)
+[Visual Hints Analysis](docs/ANALYZE_VISUAL_HINTS.md)
 
 With explicit but condensed solution instructions there is a material improvement in performance (~5pp) of which maybe half stays even with condensed hints that plausibly could be deduced in some general way.
 
@@ -167,19 +167,19 @@ It is very hard to extract hints that are non-obvious. The observations / transf
 Thereby, it doesn't seem that the hints are truly helping.
 
 ### Multi modal, adding images
-[Multi modal, adding images Analysis](ANALYZE_MULTIMODAL_IMAGES.md)
+[Multi modal, adding images Analysis](docs/ANALYZE_MULTIMODAL_IMAGES.md)
 
 The models does some reasoning better based on images. Therefore we should either supply the images directly to the model, or do it in two stages to extract new insights through an image-only prompt that we then supply to a second stage text-only prompt that solves the problem.
 
 Testing supplying the images directly using different types of generated images does not seem to be helpful in solving the harder problems.
 
 ### Deep Think Trigger
-[Deep Think Trigger Analysis](https://github.com/beetree/ARC-AGI/blob/main/ANALYZE_DEEP_THINK_TRIGGER.md)
+[Deep Think Trigger Analysis](https://github.com/beetree/ARC-AGI/blob/main/docs/ANALYZE_DEEP_THINK_TRIGGER.md)
 
 It seems that attempting to trigger deeper thinking does not actually yield any deeper thinking. The models themselves already trigger a very deep (deepest possible?) think by themselves.
 
 ### Answer Verification (before judge approach)
-[Answer Verification Analysis](ANALYZE_VERIFICATION.md)
+[Answer Verification Analysis](docs/ANALYZE_VERIFICATION.md)
 
 A key thing to devising the overall approach to solving the problems is to know when the problem has been solved, and ideally do so with high confidence. To do this, I've attempted an approach of replaying test cases with synthetic data expansion selectively. I've done this tuning for precision (e.g. avoiding falsely verifying answer that turn out to be wrong).
 
@@ -188,14 +188,14 @@ When saying something is verified it truly is correct ~94% of the time (precisio
 To ensure the precision truly approaches 100% I'm going to add in that the solution needs to be run twice with matching grids together with a perfect score on the test data with synthetic expansion. Later on I'll train a model to actually predict the likelihood of a true PASS based on all the testing done up to then.
 
 ### Strategy Extraction
-[Strategy Extraction Analysis](ANALYZE_STRATEGY_EXTRACTION.md)
+[Strategy Extraction Analysis](docs/ANALYZE_STRATEGY_EXTRACTION.md)
 
 In order to refine the results we need to introduce a concept of "strategy" (or explanation) of why the model has chosen to come to a certain answer/conclusion. This "strategy" works like a guide that can be applied to other test cases thereby enabling us to validate responses, either through testing it on the supplied test data or on synthetic data. Or even by building up a library of strategies from solved problems, generalizing them and mapping them to identifyable traits of problems to supply strategies at solution time for unknown problems.
 
 I tested several approaches of getting a "strategy" out of the model. Many had an actual performance implication by affecting the reasoning, through a distraction or deterioration of the spacial reasoning. In the end, the best proved to be a two stage prompt approach where the first stage outputs the solution, and a second stage outputs the strategy with as much context as possible retained from the first step (same session id, etc).
 
 ### Base Model Performance
-[Base Model Analysis](ANALYZE_BASE_MODELS.md)
+[Base Model Analysis](docs/ANALYZE_BASE_MODELS.md)
 
 - Overall, similar performance across the smartest versions of OpenAI, Claude and Gemini
 - GPT-5.1 with no reasoning is the only viable low latency and low cost model, though its performance is very low. Should only be used for very basic tasks.
@@ -204,7 +204,7 @@ I tested several approaches of getting a "strategy" out of the model. Many had a
 - GPT-5.1 with High reasoning performs the best (note: this is different from the official leaderboard). If perfectly combined with Gemini 3 High and Sonnet 4.5 with maximum thinking budget, around ~half of the errors are eliminated as compared to GPT 5.1 High stand-alone. E.g. there is significant non-overlap in the problems they solve. And, since Gemini 3 High and Sonnet 4.5 max budget are both lower latency, the only consideration in doing all three is cost - assuming the best solution can correctly be identified.
 
 ### Grid Format
-[Grid Format Analysis](ANALYZE_GRID_FORMAT.md)
+[Grid Format Analysis](docs/ANALYZE_GRID_FORMAT.md)
 
 - 9 different basic formats were analyzed
 - Formats that are not spoken-language-friendly clearly underperform (ascii, compact).
@@ -217,7 +217,7 @@ I tested several approaches of getting a "strategy" out of the model. Many had a
 - Conclusion: For now, will use CSV grid format only, and later on explore problem-specific representations (sparse, object, diff, image, etc)
 
 ### Strategy Usage
-[Strategy Usage Analysis](ANALYZE_STRATEGY.md)
+[Strategy Usage Analysis](docs/ANALYZE_STRATEGY.md)
 
 gpt-5.1-none is pretty much unable of following a strategy, so this will only work for better models.
 
