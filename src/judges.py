@@ -56,6 +56,7 @@ def run_judge(judge_name, prompt, judge_model, openai_client, anthropic_client, 
             pass
         
         # Capture metrics
+        result_container["model"] = judge_model
         result_container["duration_seconds"] = round(duration, 2)
         result_container["total_cost"] = cost
         result_container["input_tokens"] = response_obj.prompt_tokens

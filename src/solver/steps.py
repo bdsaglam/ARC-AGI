@@ -130,6 +130,7 @@ def run_step_5(state, models, hint_model, objects_only=False):
         extra_log = {}
         if hint_data and hint_data["hint"]:
             extra_log = {
+                "model": hint_model,
                 "Full raw LLM call": hint_data["prompt"],
                 "Full raw LLM response": hint_data["full_response"],
                 "Extracted hint": hint_data["hint"],
