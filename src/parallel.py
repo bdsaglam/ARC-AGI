@@ -97,6 +97,7 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             test_index=test_index
         )
         duration = time.perf_counter() - start_ts
+        print(f"[Temporary] Model {model_name} finished in {duration:.2f}s", file=sys.stderr)
         full_response = response.text
         input_tokens = response.prompt_tokens
         output_tokens = response.completion_tokens

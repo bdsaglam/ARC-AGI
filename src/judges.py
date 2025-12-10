@@ -1,6 +1,7 @@
 import json
 import re
 import time
+import sys
 from src.models import call_model, calculate_cost, parse_model_arg
 
 def extract_json(text):
@@ -44,6 +45,7 @@ def run_judge(judge_name, prompt, judge_model, openai_client, anthropic_client, 
         start_ts = time.perf_counter()
         response_obj = call_model(openai_client, anthropic_client, google_keys, prompt, judge_model)
         duration = time.perf_counter() - start_ts
+        print(f"[Temporary] Model {judge_model} (Judge: {judge_name}) finished in {duration:.2f}s", file=sys.stderr)
         
         result_container["response"] = response_obj.text
         
