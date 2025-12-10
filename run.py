@@ -1,5 +1,12 @@
-import argparse
 import sys
+
+# Force stable, line-buffered stdout/stderr
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(line_buffering=True)
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(line_buffering=True)
+
+import argparse
 from src.runner import run_app
 
 def main():
