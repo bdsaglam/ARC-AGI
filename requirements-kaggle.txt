@@ -9,9 +9,6 @@ google-genai>=1.52.0
 tenacity
 tqdm
 
-# Rich must stay <14 because Kaggle breaks with 14.x
-rich<14
-
 docstring_parser
 typing-inspection
 jiter

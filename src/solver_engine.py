@@ -6,12 +6,11 @@ from src.solver.state import SolverState
 from src.solver.steps import run_step_1, run_step_3, run_step_5, check_is_solved
 
 # Re-export run_solver_mode for backward compatibility if imported elsewhere
-def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, progress_queue=None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False, force_step_2: bool = False, judge_model: str = "gemini-3-high", old_pick_solution: bool = False, task_status=None):
+def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False, force_step_2: bool = False, judge_model: str = "gemini-3-high", old_pick_solution: bool = False, task_status=None):
     
     # Initialize State
     try:
-        state = SolverState(task_id, test_index, verbose, is_testing, run_timestamp, task_path, progress_queue, answer_path, judge_model, old_pick_solution=old_pick_solution, task_status=task_status)
-        state.reporter.emit("RUNNING", "Initializing", event="START")
+        state = SolverState(task_id, test_index, verbose, is_testing, run_timestamp, task_path, answer_path, judge_model, old_pick_solution=old_pick_solution, task_status=task_status)
     except Exception as e:
         print(f"Error initializing solver state: {e}", file=sys.stderr)
         raise e
@@ -64,7 +63,6 @@ def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: boo
         error_msg = str(e)
         if len(error_msg) > 50:
             error_msg = error_msg[:47] + "..."
-        state.reporter.emit("ERROR", f"Error: {error_msg}", outcome="FAIL", event="FINISH")
         log_failure(
             run_timestamp=run_timestamp if run_timestamp else "unknown_timestamp",
             task_id=task_id,

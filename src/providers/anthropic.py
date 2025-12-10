@@ -20,7 +20,6 @@ def call_anthropic(
     image_path: str = None,
     return_strategy: bool = False,
     verbose: bool = False,
-    progress_queue=None,
     task_id: str = None,
     test_index: int = None,
 ) -> ModelResponse:
@@ -95,7 +94,6 @@ def call_anthropic(
         
         final = run_with_retry(
             lambda: _safe_stream(**kw),
-            progress_queue=progress_queue,
             task_id=task_id,
             test_index=test_index
         )
@@ -125,7 +123,6 @@ def call_anthropic(
             
             final = run_with_retry(
                 lambda: _safe_stream(**kw),
-                progress_queue=progress_queue,
                 task_id=task_id,
                 test_index=test_index
             )

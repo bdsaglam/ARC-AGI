@@ -25,7 +25,6 @@ def call_gemini(
     image_path: str = None,
     return_strategy: bool = False,
     verbose: bool = False,
-    progress_queue=None,
     task_id: str = None,
     test_index: int = None,
 ) -> ModelResponse:
@@ -109,7 +108,6 @@ def call_gemini(
 
         response = run_with_retry(
             lambda: _safe_send(message),
-            progress_queue=progress_queue,
             task_id=task_id,
             test_index=test_index
         )
@@ -136,7 +134,6 @@ def call_gemini(
             message = p
             response = run_with_retry(
                 lambda: _safe_send(message),
-                progress_queue=progress_queue,
                 task_id=task_id,
                 test_index=test_index
             )

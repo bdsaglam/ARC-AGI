@@ -20,7 +20,6 @@ def call_openai_internal(
     image_path: str = None,
     return_strategy: bool = False,
     verbose: bool = False,
-    progress_queue=None,
     task_id: str = None,
     test_index: int = None,
 ) -> ModelResponse:
@@ -82,7 +81,6 @@ def call_openai_internal(
 
         response = run_with_retry(
             lambda: _safe_create(**kwargs),
-            progress_queue=progress_queue,
             task_id=task_id,
             test_index=test_index
         )
@@ -120,7 +118,6 @@ def call_openai_internal(
             # We don't necessarily need retry on the explain step to be as noisy, but good to have
             response = run_with_retry(
                 lambda: _safe_create(**kwargs),
-                progress_queue=progress_queue,
                 task_id=task_id,
                 test_index=test_index
             )

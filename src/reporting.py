@@ -128,26 +128,5 @@ def save_json_log(
     # but logging.info is also fine. Let's stick to print for output consistency.
     print(f"Log saved to: {log_path}")
 
-class ProgressReporter:
-    def __init__(self, queue, task_id, test_index):
-        self.queue = queue
-        self.task_id = task_id
-        self.test_index = test_index
-
-    def emit(self, status, step, outcome=None, event=None, predictions=None):
-        if self.queue is None:
-            return
-        import time
-        self.queue.put({
-            "task_id": self.task_id,
-            "test_index": self.test_index,
-            "status": status,
-            "step": step,
-            "outcome": outcome,
-            "event": event,
-            "predictions": predictions,
-            "timestamp": time.time(),
-        })
-
 def print_solver_summary(duration: float, total_cost: float, outcome: str) -> None:
     print(f"{outcome} (${total_cost:.4f})")

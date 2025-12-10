@@ -92,7 +92,6 @@ def call_model(
     image_path: str = None,
     return_strategy: bool = False,
     verbose: bool = False,
-    progress_queue=None,
     task_id: str = None,
     test_index: int = None,
 ) -> ModelResponse:
@@ -106,7 +105,6 @@ def call_model(
             image_path=image_path,
             return_strategy=return_strategy,
             verbose=verbose,
-            progress_queue=progress_queue,
             task_id=task_id,
             test_index=test_index,
         )
@@ -120,7 +118,6 @@ def call_model(
             image_path=image_path,
             return_strategy=return_strategy,
             verbose=verbose,
-            progress_queue=progress_queue,
             task_id=task_id,
             test_index=test_index,
         )
@@ -134,7 +131,6 @@ def call_model(
             image_path=image_path,
             return_strategy=return_strategy,
             verbose=verbose,
-            progress_queue=progress_queue,
             task_id=task_id,
             test_index=test_index,
         )

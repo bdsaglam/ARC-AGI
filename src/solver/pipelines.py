@@ -8,7 +8,7 @@ def run_objects_pipeline_variant(state, generator_model, variant_name, solver_mo
     
     # Phase A: Extraction
     prompt_A = build_objects_extraction_prompt(state.task.train, state.test_example)
-    res_A = run_single_model(generator_model, f"step_5_{variant_name}_extract", prompt_A, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, progress_queue=state.progress_queue, task_id=state.task_id, test_index=state.test_index)
+    res_A = run_single_model(generator_model, f"step_5_{variant_name}_extract", prompt_A, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index)
     if on_task_complete:
         on_task_complete()
 
@@ -25,7 +25,7 @@ def run_objects_pipeline_variant(state, generator_model, variant_name, solver_mo
 
     # Phase B: Transformation
     prompt_B = build_objects_transformation_prompt(state.task.train, state.test_example, text_A)
-    res_B = run_single_model(generator_model, f"step_5_{variant_name}_transform", prompt_B, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, progress_queue=state.progress_queue, task_id=state.task_id, test_index=state.test_index)
+    res_B = run_single_model(generator_model, f"step_5_{variant_name}_transform", prompt_B, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index)
     if on_task_complete:
         on_task_complete()
 
@@ -47,6 +47,6 @@ def run_objects_pipeline_variant(state, generator_model, variant_name, solver_mo
     pipeline_log["solution_prompt"] = prompt_C
     
     # We return the log data to be merged by the caller
-    results_C = run_models_in_parallel(solver_models, state.run_id_counts, f"step_5_{variant_name}_sol", prompt_C, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, progress_queue=state.progress_queue, task_id=state.task_id, test_index=state.test_index, on_task_complete=on_task_complete)
+    results_C = run_models_in_parallel(solver_models, state.run_id_counts, f"step_5_{variant_name}_sol", prompt_C, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, on_task_complete=on_task_complete)
     
     return f"objects_pipeline_{variant_name}", results_C, pipeline_log

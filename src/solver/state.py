@@ -7,17 +7,16 @@ from src.config import get_api_keys, get_http_client
 from src.tasks import load_task
 from src.run_utils import find_task_path
 from src.selection import pick_solution_v2, pick_solution
-from src.reporting import ProgressReporter, print_solver_summary
+from src.reporting import print_solver_summary
 from src.logging import setup_logging, write_step_log, PrefixedStdout
 
 class SolverState:
-    def __init__(self, task_id: str, test_index: int, verbose: int, is_testing: bool, run_timestamp: str, task_path: Path = None, progress_queue=None, answer_path: Path = None, judge_model: str = "gemini-3-high", old_pick_solution: bool = False, task_status=None):
+    def __init__(self, task_id: str, test_index: int, verbose: int, is_testing: bool, run_timestamp: str, task_path: Path = None, answer_path: Path = None, judge_model: str = "gemini-3-high", old_pick_solution: bool = False, task_status=None):
         self.task_id = task_id
         self.test_index = test_index
         self.verbose = verbose
         self.is_testing = is_testing
         self.run_timestamp = run_timestamp
-        self.progress_queue = progress_queue
         self.answer_path = answer_path
         self.judge_model = judge_model
         self.old_pick_solution = old_pick_solution
@@ -26,7 +25,6 @@ class SolverState:
         self.task_status.setdefault('phase', 'Init')
         self.task_status.setdefault('start_time', time.time())
         
-        self.reporter = ProgressReporter(progress_queue, task_id, test_index)
         setup_logging(verbose)
         
         self.start_time = time.time()
@@ -139,5 +137,4 @@ class SolverState:
         self.print_summary(outcome)
         
         self.close()
-        self.reporter.emit("COMPLETED", "Finished", outcome=outcome, event="FINISH", predictions=picked_solutions)
         return picked_solutions

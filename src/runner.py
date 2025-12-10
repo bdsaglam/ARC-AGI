@@ -11,12 +11,7 @@ from src.execution import execute_task
 from src.submission import generate_submission
 from src.batch_processing import run_batch_execution
 
-# Conditional import for rich
-try:
-    from rich.live import Live
-    RICH_AVAILABLE = True
-except ImportError:
-    RICH_AVAILABLE = False
+
 
 def run_app(
     task=None,
@@ -38,7 +33,6 @@ def run_app(
     generate_hint=False,
     generate_hint_model="gpt-5.1-high",
     judge_model=None,
-    with_dashboard=False,
     old_pick_solution=False,
     submissions_directory="submissions/",
     answers_directory=None,
@@ -66,7 +60,6 @@ def run_app(
         generate_hint=generate_hint,
         generate_hint_model=generate_hint_model,
         judge_model=judge_model,
-        with_dashboard=with_dashboard,
         old_pick_solution=old_pick_solution,
         submissions_directory=submissions_directory,
         answers_directory=answers_directory,
@@ -150,10 +143,7 @@ def run_app(
         
         rate_limit_scale = 1.0 / max(1, args.task_workers)
         
-        # Determine if we should use the dashboard
-        use_dashboard = RICH_AVAILABLE and sys.stdout.isatty() and args.with_dashboard and (args.solver or args.solver_testing)
-
-        final_results = run_batch_execution(args, tasks_to_run, run_timestamp, rate_limit_scale, use_dashboard, answers_dir)
+        final_results = run_batch_execution(args, tasks_to_run, run_timestamp, rate_limit_scale, answers_dir)
                         
         # Generate Submission File
         generate_submission(final_results, args.submissions_directory, run_timestamp)
