@@ -17,8 +17,8 @@ def run_app(
     task=None,
     task_directory=None,
     test=1,
-    workers=10,
     task_workers=20,
+    startup_delay=20.0,
     task_limit=None,
     objects=False,
     step_5_only=False,
@@ -44,7 +44,6 @@ def run_app(
         task=task,
         task_directory=task_directory,
         test=test,
-        workers=workers,
         task_workers=task_workers,
         task_limit=task_limit,
         objects=objects,
@@ -143,7 +142,7 @@ def run_app(
         
         rate_limit_scale = 1.0 / max(1, args.task_workers)
         
-        final_results = run_batch_execution(args, tasks_to_run, run_timestamp, rate_limit_scale, answers_dir)
+        final_results = run_batch_execution(args, tasks_to_run, run_timestamp, rate_limit_scale, answers_dir, startup_delay=startup_delay)
                         
         # Generate Submission File
         generate_submission(final_results, args.submissions_directory, run_timestamp)
