@@ -157,6 +157,14 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
 
 def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, completion_message: str = None, on_task_complete=None):
     all_results = []
+    
+    # Wrapper for debugging queue times
+    def debug_run_single_model(queue_time, *args, **kwargs):
+        start_wait = time.time() - queue_time
+        if start_wait > 0.1:  # Only print if waiting more than 100ms
+            print(f"DEBUG: Task {kwargs.get('run_id', 'unknown')} waited in queue for {start_wait:.2f}s")
+        return run_single_model(*args, **kwargs)
+
     with ThreadPoolExecutor(max_workers=10) as executor:
         
         # Generate unique run IDs
@@ -168,7 +176,11 @@ def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test
             run_list.append({"name": model_name, "run_id": run_id})
 
         future_to_run_id = {
-            executor.submit(run_single_model, run["name"], run["run_id"], prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path, run_timestamp, task_id, test_index): run["run_id"]
+            executor.submit(
+                debug_run_single_model,
+                time.time(), # Capture queue time
+                run["name"], run["run_id"], prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path, run_timestamp, task_id, test_index
+            ): run["run_id"]
             for run in run_list
         }
 

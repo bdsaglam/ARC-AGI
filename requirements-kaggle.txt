@@ -6,11 +6,8 @@ anthropic
 google-genai>=1.52.0
 
 # --- Utilities used by the solver ---
-tenacity
-tqdm
 
 docstring_parser
-typing-inspection
 jiter
 
 # Use pydantic v2 (the solver assumes v2 behavior)

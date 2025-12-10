@@ -3,7 +3,6 @@ import os
 import json
 import argparse
 from pathlib import Path
-from tqdm import tqdm
 from dotenv import load_dotenv
 import httpx
 
@@ -36,7 +35,7 @@ def generate_truth(cases_dir, force=False):
     # Process all files
     # case_files = case_files[:5]
 
-    for case_file in tqdm(case_files, desc="Generating Truth"):
+    for case_file in case_files:
         truth_file = case_file.with_suffix(".truth.json")
         
         if truth_file.exists() and not force:
