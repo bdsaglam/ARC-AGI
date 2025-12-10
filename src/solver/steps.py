@@ -148,7 +148,7 @@ def run_step_5(state, models, hint_model, objects_only=False):
                 on_complete()
         return "generate-hint", [], extra_log
 
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         futures = []
         
         if objects_only:
