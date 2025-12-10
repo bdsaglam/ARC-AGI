@@ -1,6 +1,7 @@
 import json
 import re
-from src.models import call_model
+import time
+from src.models import call_model, calculate_cost, parse_model_arg
 
 def extract_json(text):
     """
@@ -40,14 +41,25 @@ def run_judge(judge_name, prompt, judge_model, openai_client, anthropic_client, 
         print(f"\n[pick_solution_v2] Running {judge_name} Judge ({judge_model})...")
     
     try:
+        start_ts = time.perf_counter()
         response_obj = call_model(openai_client, anthropic_client, google_keys, prompt, judge_model)
+        duration = time.perf_counter() - start_ts
+        
         result_container["response"] = response_obj.text
         
+        # Calculate cost
+        cost = 0.0
+        try:
+            model_config = parse_model_arg(judge_model)
+            cost = calculate_cost(model_config, response_obj)
+        except Exception:
+            pass
+        
         # Capture metrics
-        result_container["duration_seconds"] = round(response_obj.duration, 2)
-        result_container["total_cost"] = response_obj.cost
-        result_container["input_tokens"] = response_obj.input_tokens
-        result_container["output_tokens"] = response_obj.output_tokens
+        result_container["duration_seconds"] = round(duration, 2)
+        result_container["total_cost"] = cost
+        result_container["input_tokens"] = response_obj.prompt_tokens
+        result_container["output_tokens"] = response_obj.completion_tokens
         result_container["cached_tokens"] = response_obj.cached_tokens
         
         parsed_json = extract_json(response_obj.text)

@@ -1,4 +1,5 @@
 import re
+import time
 from typing import Optional
 import httpx
 from openai import OpenAI
@@ -6,7 +7,7 @@ from anthropic import Anthropic
 from google import genai
 from src.config import get_api_keys, get_http_client
 from src.image_generation import generate_and_save_image
-from src.models import call_model
+from src.models import call_model, calculate_cost, parse_model_arg
 from src.tasks import Task
 
 def generate_hint(task: Task, image_path: str, hint_model_arg: str, verbose: bool) -> dict:
@@ -125,6 +126,7 @@ HINT_END
     # google_client instantiation removed as we now pass keys directly
 
     try:
+        start_ts = time.perf_counter()
         response = call_model(
             openai_client=openai_client,
             anthropic_client=anthropic_client,
@@ -134,6 +136,15 @@ HINT_END
             image_path=image_path,
             verbose=verbose
         )
+        duration = time.perf_counter() - start_ts
+        
+        # Calculate cost
+        cost = 0.0
+        try:
+            model_config = parse_model_arg(hint_model_arg)
+            cost = calculate_cost(model_config, response)
+        except Exception:
+            pass
 
         if verbose:
             print("--- Hint Generation Full Response ---")
@@ -149,10 +160,10 @@ HINT_END
             "hint": hint,
             "prompt": prompt,
             "full_response": response.text,
-            "duration": response.duration,
-            "cost": response.cost,
-            "input_tokens": response.input_tokens,
-            "output_tokens": response.output_tokens,
+            "duration": duration,
+            "cost": cost,
+            "input_tokens": response.prompt_tokens,
+            "output_tokens": response.completion_tokens,
             "cached_tokens": response.cached_tokens,
         }
 
