@@ -1,6 +1,7 @@
 import argparse
 import os
 import socket
+import sys
 import httpx
 from pathlib import Path
 from typing import Optional
@@ -15,9 +16,11 @@ PROVIDER_RATE_LIMITS = {
 }
 
 class KeepAliveTransport(httpx.HTTPTransport):
-    def _init_pool_manager(self, *args, **kwargs):
-        # Set default socket options
-        options = kwargs.get("socket_options", [])
+    def __init__(self, *args, **kwargs):
+        # Get existing options or start empty
+        # Note: socket_options can be None in kwargs if not provided, handle that.
+        options = list(kwargs.get("socket_options") or [])
+        
         # Enable TCP Keep-Alive
         options.append((socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1))
         
@@ -37,8 +40,19 @@ class KeepAliveTransport(httpx.HTTPTransport):
         except AttributeError:
              pass # Fallback for non-Linux if testing locally
 
+        print(f"DEBUG [KeepAliveTransport]: Initializing with socket options:", file=sys.stderr)
+        for level, optname, value in options:
+             # Try to resolve names for better readability
+             level_name = "SOL_SOCKET" if level == socket.SOL_SOCKET else ("IPPROTO_TCP" if level == socket.IPPROTO_TCP else str(level))
+             try:
+                 # Invert the socket module attributes to find name from value
+                 opt_str = next((k for k, v in vars(socket).items() if v == optname and k.isupper()), str(optname))
+             except:
+                 opt_str = str(optname)
+             print(f"  - {level_name}, {opt_str}: {value}", file=sys.stderr)
+
         kwargs["socket_options"] = options
-        super()._init_pool_manager(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 def get_http_client(**kwargs) -> httpx.Client:
     """Returns a shared httpx client, potentially with insecure SSL if configured."""

@@ -80,6 +80,9 @@ def call_openai_internal(
         if reasoning_effort != "none":
             kwargs["reasoning"] = {"effort": reasoning_effort}
 
+        # DEBUG: Confirm parameters
+        print(f"DEBUG [OpenAI Call]: Model={model}, Stream={kwargs.get('stream')}, Timeout={kwargs.get('timeout')}", file=sys.stderr)
+
         def _call_and_accumulate():
             stream = _safe_create(**kwargs)
             collected_content = []
