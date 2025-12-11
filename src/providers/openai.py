@@ -27,6 +27,34 @@ def call_openai_internal(
     model = config.base_model
     reasoning_effort = str(config.config) # Cast to string for safety
 
+    def _map_exception(e: Exception):
+        # 1. Known SDK Retryables
+        if isinstance(e, (openai.RateLimitError, openai.APIConnectionError, openai.InternalServerError)):
+            raise RetryableProviderError(f"OpenAI Transient Error (Model: {model}): {e}") from e
+        
+        # 2. Known SDK Non-Retryables
+        if isinstance(e, (openai.BadRequestError, openai.AuthenticationError, openai.PermissionDeniedError)):
+            raise NonRetryableProviderError(f"OpenAI Fatal Error (Model: {model}): {e}") from e
+
+        # 3. String matching for other transient network errors
+        err_str = str(e)
+        if (
+            "Connection error" in err_str
+            or "500" in err_str
+            or "server_error" in err_str
+            or "upstream connect error" in err_str
+            or "timed out" in err_str
+            or "Server disconnected" in err_str
+            or "RemoteProtocolError" in err_str
+            or "connection closed" in err_str.lower()
+            or "peer closed connection" in err_str.lower()
+            or "incomplete chunked read" in err_str.lower()
+        ):
+            raise RetryableProviderError(f"Network/Protocol Error (Model: {model}): {e}") from e
+
+        # 4. True Unknowns -> Loud Retry
+        raise UnknownProviderError(f"Unexpected OpenAI Error (Model: {model}): {e}") from e
+
     def _solve(p: str) -> ModelResponse:
         content = [{"type": "input_text", "text": p}]
         if image_path:
@@ -48,9 +76,6 @@ def call_openai_internal(
         }
         if reasoning_effort != "none":
             kwargs["reasoning"] = {"effort": reasoning_effort}
-
-        # DEBUG: Confirm parameters
-        print(f"DEBUG [OpenAI Call]: Model={model}, Stream={kwargs.get('stream')}, Timeout={kwargs.get('timeout')}", file=sys.stderr)
 
         def _call_and_accumulate():
             try:
@@ -86,32 +111,7 @@ def call_openai_internal(
                 }
 
             except Exception as e:
-                # 1. Known SDK Retryables
-                if isinstance(e, (openai.RateLimitError, openai.APIConnectionError, openai.InternalServerError)):
-                    raise RetryableProviderError(f"OpenAI Transient Error (Model: {model}): {e}") from e
-                
-                # 2. Known SDK Non-Retryables
-                if isinstance(e, (openai.BadRequestError, openai.AuthenticationError, openai.PermissionDeniedError)):
-                    raise NonRetryableProviderError(f"OpenAI Fatal Error (Model: {model}): {e}") from e
-
-                # 3. String matching for other transient network errors
-                err_str = str(e)
-                if (
-                    "Connection error" in err_str
-                    or "500" in err_str
-                    or "server_error" in err_str
-                    or "upstream connect error" in err_str
-                    or "timed out" in err_str
-                    or "Server disconnected" in err_str
-                    or "RemoteProtocolError" in err_str
-                    or "connection closed" in err_str.lower()
-                    or "peer closed connection" in err_str.lower()
-                    or "incomplete chunked read" in err_str.lower()
-                ):
-                    raise RetryableProviderError(f"Network/Protocol Error (Model: {model}): {e}") from e
-
-                # 4. True Unknowns -> Loud Retry
-                raise UnknownProviderError(f"Unexpected OpenAI Error (Model: {model}): {e}") from e
+                _map_exception(e)
 
         result = run_with_retry(
             lambda: _call_and_accumulate(),
@@ -149,9 +149,16 @@ def call_openai_internal(
                 "input": [{"role": "user", "content": p}],
                 "timeout": 3600
             }
+            
+            def _create_safe():
+                try:
+                    return client.responses.create(**kwargs)
+                except Exception as e:
+                    _map_exception(e)
+
             # We don't necessarily need retry on the explain step to be as noisy, but good to have
             response = run_with_retry(
-                lambda: _safe_create(**kwargs),
+                lambda: _create_safe(),
                 task_id=task_id,
                 test_index=test_index
             )
