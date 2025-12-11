@@ -55,7 +55,7 @@ def extract_tag_content(text: str, tag_name: str) -> str | None:
         return match.group(1).strip()
     return None
 
-def run_single_model(model_name, run_id, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None):
+def run_single_model(model_name, run_id, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, use_background=False):
     prefix = f"[{run_id}]"
     if verbose:
         print(f"{prefix} Initiating call...")
@@ -94,7 +94,8 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             return_strategy=False,
             verbose=verbose,
             task_id=task_id,
-            test_index=test_index
+            test_index=test_index,
+            use_background=use_background
         )
         duration = time.perf_counter() - start_ts
         print(f"[Temporary] Model {model_name} finished in {duration:.2f}s", file=sys.stderr)
@@ -156,7 +157,7 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             
         return {"model": model_name, "run_id": run_id, "grid": None, "is_correct": False, "cost": cost, "duration": duration, "prompt": prompt, "full_response": str(e), "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens}
 
-def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, completion_message: str = None, on_task_complete=None):
+def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, completion_message: str = None, on_task_complete=None, use_background=False):
     all_results = []
     
     # Wrapper for debugging queue times
@@ -180,7 +181,7 @@ def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test
             executor.submit(
                 debug_run_single_model,
                 time.time(), # Capture queue time
-                run["name"], run["run_id"], prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path, run_timestamp, task_id, test_index
+                run["name"], run["run_id"], prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path, run_timestamp, task_id, test_index, use_background
             ): run["run_id"]
             for run in run_list
         }

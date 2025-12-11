@@ -89,7 +89,8 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
                     force_step_2=args.force_step_2,
                     judge_model=args.judge_model,
                     old_pick_solution=args.old_pick_solution,
-                    task_status=task_status
+                    task_status=task_status,
+                    openai_background=args.openai_background
                 )
             except Exception as e:
                 raise e

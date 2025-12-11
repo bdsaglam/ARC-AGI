@@ -1,4 +1,5 @@
 import sys
+import os
 
 # Force stable, line-buffered stdout/stderr
 if hasattr(sys.stdout, "reconfigure"):
@@ -40,6 +41,7 @@ def main():
     parser.add_argument("--generate-hint-model", type=str, default="gpt-5.1-medium", help="Model to use for generating hints.")
     parser.add_argument("--judge-model", type=str, default=None, help="Model to use for the auditing judges (Logic & Consistency).")
     parser.add_argument("--old-pick-solution", action="store_true", help="Use the legacy pick_solution() logic instead of the multi-judge pick_solution_v2().")
+    parser.add_argument("--openai-background", action="store_true", default=os.getenv("OPENAI_BACKGROUND", "").lower() == "true", help="Use OpenAI Background (Responses) API for async execution (Env: OPENAI_BACKGROUND=true).")
     parser.add_argument("--submissions-directory", type=str, default="submissions/", help="Directory to save submission files (default: submissions/).")
     parser.add_argument("--answers-directory", type=str, help="Optional directory containing answer files (with 'output' for test cases).")
 

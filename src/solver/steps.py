@@ -16,7 +16,7 @@ def run_step_1(state, models):
     if state.verbose >= 1:
         print(f"Running {len(models)} models...")
     prompt_step1 = build_prompt(state.task.train, state.test_example)
-    results_step1 = run_models_in_parallel(models, state.run_id_counts, "step_1", prompt_step1, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, completion_message="Broad search")
+    results_step1 = run_models_in_parallel(models, state.run_id_counts, "step_1", prompt_step1, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, completion_message="Broad search", use_background=state.openai_background)
     state.process_results(results_step1, step_1_log)
     state.log_step("step_1", step_1_log)
 
@@ -27,7 +27,7 @@ def run_step_3(state, models):
     if state.verbose >= 1:
         print(f"Running {len(models)} models...")
     prompt_step3 = build_prompt(state.task.train, state.test_example)
-    results_step3 = run_models_in_parallel(models, state.run_id_counts, "step_3", prompt_step3, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, completion_message="Narrow search")
+    results_step3 = run_models_in_parallel(models, state.run_id_counts, "step_3", prompt_step3, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, completion_message="Narrow search", use_background=state.openai_background)
     state.process_results(results_step3, step_3_log)
     state.log_step("step_3", step_3_log)
 
@@ -111,7 +111,7 @@ def run_step_5(state, models, hint_model, objects_only=False):
         if state.verbose >= 1:
             print(f"Running {len(models)} models with deep thinking...")
         prompt_deep = build_prompt(state.task.train, state.test_example, trigger_deep_thinking=True)
-        results_deep = run_models_in_parallel(models, state.run_id_counts, "step_5_deep_thinking", prompt_deep, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, on_task_complete=on_complete)
+        results_deep = run_models_in_parallel(models, state.run_id_counts, "step_5_deep_thinking", prompt_deep, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, on_task_complete=on_complete, use_background=state.openai_background)
         return "trigger-deep-thinking", results_deep, None
 
     def run_image_step(img_path, on_complete=None):
@@ -119,7 +119,7 @@ def run_step_5(state, models, hint_model, objects_only=False):
             print(f"Running {len(models)} models with image...")
         # Image is already generated
         prompt_image = build_prompt(state.task.train, state.test_example, image_path=img_path)
-        results_image = run_models_in_parallel(models, state.run_id_counts, "step_5_image", prompt_image, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, image_path=img_path, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, on_task_complete=on_complete)
+        results_image = run_models_in_parallel(models, state.run_id_counts, "step_5_image", prompt_image, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, image_path=img_path, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, on_task_complete=on_complete, use_background=state.openai_background)
         return "image", results_image, None
 
     def run_hint_step(img_path, on_complete=None):
@@ -141,7 +141,7 @@ def run_step_5(state, models, hint_model, objects_only=False):
                 "cached_tokens": hint_data.get("cached_tokens", 0),
             }
             prompt_hint = build_prompt(state.task.train, state.test_example, strategy=hint_data["hint"])
-            results_hint = run_models_in_parallel(models, state.run_id_counts, "step_5_generate_hint", prompt_hint, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, on_task_complete=on_complete)
+            results_hint = run_models_in_parallel(models, state.run_id_counts, "step_5_generate_hint", prompt_hint, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, on_task_complete=on_complete, use_background=state.openai_background)
             return "generate-hint", results_hint, extra_log
         
         # If no hint generated, manually drain counter

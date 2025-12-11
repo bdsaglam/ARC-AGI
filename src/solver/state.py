@@ -11,7 +11,7 @@ from src.reporting import print_solver_summary
 from src.logging import setup_logging, write_step_log, PrefixedStdout
 
 class SolverState:
-    def __init__(self, task_id: str, test_index: int, verbose: int, is_testing: bool, run_timestamp: str, task_path: Path = None, answer_path: Path = None, judge_model: str = "gemini-3-high", old_pick_solution: bool = False, task_status=None):
+    def __init__(self, task_id: str, test_index: int, verbose: int, is_testing: bool, run_timestamp: str, task_path: Path = None, answer_path: Path = None, judge_model: str = "gemini-3-high", old_pick_solution: bool = False, task_status=None, openai_background: bool = False):
         self.task_id = task_id
         self.test_index = test_index
         self.verbose = verbose
@@ -21,6 +21,7 @@ class SolverState:
         self.judge_model = judge_model
         self.old_pick_solution = old_pick_solution
         self.task_status = task_status if task_status is not None else {}
+        self.openai_background = openai_background
         self.task_status.setdefault('step', '0')
         self.task_status.setdefault('phase', 'Init')
         self.task_status.setdefault('start_time', time.time())

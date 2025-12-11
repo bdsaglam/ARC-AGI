@@ -39,6 +39,7 @@ def run_app(
     answers_directory=None,
     solver=False,
     solver_testing=False,
+    openai_background=False,
 ):
     # Construct args namespace to pass around internally as many legacy functions expect it
     args = SimpleNamespace(
@@ -65,7 +66,8 @@ def run_app(
         submissions_directory=submissions_directory,
         answers_directory=answers_directory,
         solver=solver,
-        solver_testing=solver_testing
+        solver_testing=solver_testing,
+        openai_background=openai_background
     )
 
     if os.getenv("ARC_AGI_INSECURE_SSL", "").lower() == "true":

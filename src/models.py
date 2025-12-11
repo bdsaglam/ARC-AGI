@@ -99,6 +99,7 @@ def call_model(
     verbose: bool = False,
     task_id: str = None,
     test_index: int = None,
+    use_background: bool = False,
 ) -> ModelResponse:
     config = parse_model_arg(model_arg)
 
@@ -112,6 +113,7 @@ def call_model(
             verbose=verbose,
             task_id=task_id,
             test_index=test_index,
+            use_background=use_background,
         )
     elif config.provider == "anthropic":
         if not anthropic_client:

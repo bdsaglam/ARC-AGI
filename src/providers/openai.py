@@ -22,6 +22,7 @@ def call_openai_internal(
     verbose: bool = False,
     task_id: str = None,
     test_index: int = None,
+    use_background: bool = False,
 ) -> ModelResponse:
     
     model = config.base_model
@@ -54,6 +55,109 @@ def call_openai_internal(
 
         # 4. True Unknowns -> Loud Retry
         raise UnknownProviderError(f"Unexpected OpenAI Error (Model: {model}): {e}") from e
+
+    def _solve_background(p: str) -> ModelResponse:
+        import time
+        import random
+
+        content = [{"type": "input_text", "text": p}]
+        if image_path:
+            with open(image_path, "rb") as image_file:
+                base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+            mime_type, _ = mimetypes.guess_type(image_path)
+            if mime_type is None:
+                mime_type = 'application/octet-stream'
+            content.append({
+                "type": "input_image",
+                "image_url": f"data:{mime_type};base64,{base64_image}",
+            })
+
+        kwargs = {
+            "model": model,
+            "input": [{"role": "user", "content": content}],
+            "timeout": 60, # Timeout for the submit request itself
+            "background": True,
+            "store": True,
+        }
+        if reasoning_effort != "none":
+            kwargs["reasoning"] = {"effort": reasoning_effort}
+
+        # 1. Submit Job
+        def _submit():
+            try:
+                return client.responses.create(**kwargs)
+            except Exception as e:
+                _map_exception(e)
+        
+        job = run_with_retry(lambda: _submit(), task_id=task_id, test_index=test_index)
+        job_id = job.id
+        print(f"[BACKGROUND] [{model}] Job submitted. ID: {job_id}")
+
+        # 2. Poll for Completion
+        max_wait_time = 3600  # 60 minutes
+        start_time = time.time()
+        poll_interval_base = 2.0
+        last_log_time = time.time()
+
+        while True:
+            # Check Timeout
+            elapsed = time.time() - start_time
+            if elapsed > max_wait_time:
+                raise NonRetryableProviderError(f"OpenAI Background Job {job_id} timed out after {max_wait_time}s")
+
+            # Logging every ~30s
+            if time.time() - last_log_time > 30:
+                print(f"[BACKGROUND] [{model}] Job {job_id} still processing... ({int(elapsed)}s elapsed)")
+                last_log_time = time.time()
+
+            # Retrieve Status
+            def _retrieve():
+                try:
+                    return client.responses.retrieve(job_id)
+                except Exception as e:
+                    _map_exception(e)
+
+            job = run_with_retry(lambda: _retrieve(), task_id=task_id, test_index=test_index)
+
+            if job.status in ("queued", "in_progress"):
+                # Sleep with jitter
+                sleep_time = poll_interval_base + random.uniform(0, 1.0)
+                time.sleep(sleep_time)
+                continue
+            
+            # Terminal States
+            if job.status == "completed":
+                text_output = ""
+                # Try to use convenience field first
+                if hasattr(job, "output_text") and job.output_text:
+                    text_output = job.output_text
+                # Fallback to manual extraction if needed
+                elif hasattr(job, "output"):
+                     for item in job.output:
+                        if item.type == "message":
+                            for content_part in item.content:
+                                if content_part.type == "output_text":
+                                    text_output += content_part.text
+                
+                usage = getattr(job, "usage", None)
+                return ModelResponse(
+                    text=text_output,
+                    prompt_tokens=getattr(usage, "input_tokens", 0) if usage else 0,
+                    cached_tokens=0,
+                    completion_tokens=getattr(usage, "output_tokens", 0) if usage else 0,
+                    strategy=None
+                )
+            
+            elif job.status == "failed":
+                err_msg = f"Code: {job.error.code}, Message: {job.error.message}" if job.error else "Unknown error"
+                raise NonRetryableProviderError(f"OpenAI Background Job {job_id} FAILED: {err_msg}")
+            
+            elif job.status in ("cancelled", "incomplete"):
+                 reason = getattr(job, 'incomplete_details', 'Unknown')
+                 raise NonRetryableProviderError(f"OpenAI Background Job {job_id} ended with status={job.status}, reason={reason}")
+            
+            else:
+                raise UnknownProviderError(f"OpenAI Background Job {job_id} ended in unexpected status={job.status}")
 
     def _solve(p: str) -> ModelResponse:
         content = [{"type": "input_text", "text": p}]
@@ -181,5 +285,11 @@ def call_openai_internal(
         except Exception as e:
             logger.error(f"Step 2 strategy extraction failed: {e}")
             return None
+
+    if use_background:
+        # Background mode implies solving only (strategy extraction in background mode is not yet implemented/needed)
+        # We wrap it in run_with_retry at the job level, but _solve_background handles its own retry for parts.
+        # Actually _solve_background handles retries internally for submit/retrieve.
+        return _solve_background(prompt)
 
     return orchestrate_two_stage(_solve, _explain, prompt, return_strategy, verbose, image_path)
