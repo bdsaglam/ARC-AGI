@@ -20,6 +20,7 @@ def run_app(
     task_workers=20,
     startup_delay=20.0,
     task_limit=None,
+    task_selection=None,
     objects=False,
     step_5_only=False,
     objects_only=False,
@@ -46,6 +47,7 @@ def run_app(
         test=test,
         task_workers=task_workers,
         task_limit=task_limit,
+        task_selection=task_selection,
         objects=objects,
         step_5_only=step_5_only,
         objects_only=objects_only,
@@ -118,6 +120,15 @@ def run_app(
             sys.exit(0)
             
         task_files = sorted(task_files)
+        
+        if args.task_selection:
+            selected_ids = [t.strip() for t in args.task_selection.split(",")]
+            task_files = [f for f in task_files if f.stem in selected_ids]
+            if not task_files:
+                 print(f"No JSON files found in '{directory}' matching selection: {selected_ids}", file=sys.stderr)
+                 sys.exit(0)
+            print(f"Filtered to {len(task_files)} tasks based on selection.")
+
         if args.task_limit:
             print(f"Limiting execution to first {args.task_limit} tasks.")
             task_files = task_files[:args.task_limit]

@@ -17,6 +17,7 @@ def main():
     task_group.add_argument("--task", help="Task ID (e.g., 38007db0) or path to JSON file")
     task_group.add_argument("--task-directory", help="Directory containing task JSON files to run in batch")
     
+    parser.add_argument("--task-selection", help="Comma-separated list of Task IDs to select from the directory (e.g. '08ed6ac7,15696249').")
     parser.add_argument("--test", type=int, default=1, help="Test case index (1-based, default: 1). Ignored if --task-directory is used.")
     parser.add_argument("--task-workers", type=int, default=20, help="Number of tasks to run in parallel (default: 20). CAUTION: Divides global rate limits by this factor.")
     parser.add_argument("--startup-delay", type=float, default=20.0, help="Delay in seconds between starting parallel tasks in batch mode to avoid rate limits (default: 20.0).")
