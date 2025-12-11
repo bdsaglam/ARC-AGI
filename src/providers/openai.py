@@ -91,7 +91,8 @@ def call_openai_internal(
         
         job = run_with_retry(lambda: _submit(), task_id=task_id, test_index=test_index)
         job_id = job.id
-        print(f"[BACKGROUND] [{model}] Job submitted. ID: {job_id}")
+        if verbose:
+            print(f"[BACKGROUND] [{model}] Job submitted. ID: {job_id}")
 
         # 2. Poll for Completion
         max_wait_time = 3600  # 60 minutes
@@ -106,7 +107,7 @@ def call_openai_internal(
                 raise NonRetryableProviderError(f"OpenAI Background Job {job_id} timed out after {max_wait_time}s")
 
             # Logging every ~30s
-            if time.time() - last_log_time > 30:
+            if verbose and (time.time() - last_log_time > 30):
                 print(f"[BACKGROUND] [{model}] Job {job_id} still processing... ({int(elapsed)}s elapsed)")
                 last_log_time = time.time()
 
