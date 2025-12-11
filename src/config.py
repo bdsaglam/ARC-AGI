@@ -40,17 +40,6 @@ class KeepAliveTransport(httpx.HTTPTransport):
         except AttributeError:
              pass # Fallback for non-Linux if testing locally
 
-        print(f"DEBUG [KeepAliveTransport]: Initializing with socket options:", file=sys.stderr)
-        for level, optname, value in options:
-             # Try to resolve names for better readability
-             level_name = "SOL_SOCKET" if level == socket.SOL_SOCKET else ("IPPROTO_TCP" if level == socket.IPPROTO_TCP else str(level))
-             try:
-                 # Invert the socket module attributes to find name from value
-                 opt_str = next((k for k, v in vars(socket).items() if v == optname and k.isupper()), str(optname))
-             except:
-                 opt_str = str(optname)
-             print(f"  - {level_name}, {opt_str}: {value}", file=sys.stderr)
-
         kwargs["socket_options"] = options
         super().__init__(*args, **kwargs)
 
