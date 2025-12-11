@@ -47,12 +47,26 @@ def pick_solution_v2(candidates_object, reasoning_store, task, test_index, opena
             if model_id in reasoning_store:
                 cand["reasoning"][model_id] = reasoning_store[model_id]
 
+    # 2. Filter Candidates for Judging
+    # If there are two or more candidates that have two or more models/votes,
+    # then the only candidates that should be considered by the judges are candidates that have score of two or more.
+    multi_vote_candidates = [c for c in candidates_list if c['count'] >= 2]
+    
+    if len(multi_vote_candidates) >= 2:
+        candidates_for_judging = multi_vote_candidates
+        if verbose >= 1:
+            print(f"[pick_solution_v2] Filtering enabled: Judging only {len(candidates_for_judging)} candidates with >= 2 votes.")
+    else:
+        candidates_for_judging = candidates_list
+        if verbose >= 1:
+            print(f"[pick_solution_v2] Filtering disabled: Judging all {len(candidates_for_judging)} candidates.")
+
     # 3. Build Prompts
-    full_prompt_logic = build_logic_prompt(train_examples, test_input, candidates_list)
-    full_prompt_cons = build_consistency_prompt(train_examples, test_input, candidates_list)
+    full_prompt_logic = build_logic_prompt(train_examples, test_input, candidates_for_judging)
+    full_prompt_cons = build_consistency_prompt(train_examples, test_input, candidates_for_judging)
 
     # 4. Run Judges
-    scores = {c['id']: 0.0 for c in candidates_list}
+    scores = {c['id']: 0.0 for c in candidates_list} # Init all scores to 0
 
     # Data Holders
     logic_data = { "prompt": full_prompt_logic, "response": None, "parsed": None }
@@ -78,7 +92,7 @@ def pick_solution_v2(candidates_object, reasoning_store, task, test_index, opena
             if cid in scores:
                 scores[cid] = max(scores[cid], c.get("score", 0))
 
-    # 2. Determine Attempt 1 (Consensus)
+    # 5. Determine Attempt 1 (Consensus)
     # Sort by count desc, then by score desc
     candidates_by_consensus = sorted(candidates_list, key=lambda c: (c['count'], scores[c['id']]), reverse=True)
     attempt_1_candidate = candidates_by_consensus[0]
