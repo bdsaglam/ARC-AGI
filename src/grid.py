@@ -86,7 +86,10 @@ def parse_grid_from_text(text: str) -> Grid:
                         candidate_sub = clean_line[match.start() : last_digit_idx + 1]
                         sub_tokens = candidate_sub.split(",")
                         if len(sub_tokens) > 1 and all(t.strip().isdigit() for t in sub_tokens):
-                             row = [int(t.strip()) for t in sub_tokens]
+                             # Ensure the rest of the line doesn't contain alphabetic chars (noise)
+                             remainder = clean_line[last_digit_idx + 1:].strip()
+                             if not any(c.isalpha() for c in remainder):
+                                 row = [int(t.strip()) for t in sub_tokens]
 
         except ValueError:
             pass
