@@ -60,6 +60,10 @@ def parse_logs(directory):
 
             if res_type == "finish":
                 task_data[key]["finish_data"] = data["finish_data"]
+                if "judge_stats" in data:
+                    if isinstance(task_data[key]["finish_data"], dict):
+                        task_data[key]["finish_data"]["judge_stats"] = data["judge_stats"]
+                
                 task_data[key]["finish_status"] = data["finish_status"]
                 # Finish step might have "calls" (judges) to be displayed
                 if data["calls"]:
