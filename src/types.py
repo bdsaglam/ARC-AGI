@@ -4,12 +4,14 @@ from typing import Tuple, Optional, Set
 
 # Constants
 GPT_5_1_BASE = "gpt-5.1"
+GPT_5_2_BASE = "gpt-5.2"
 CLAUDE_SONNET_BASE = "claude-sonnet-4-5-20250929"
 CLAUDE_OPUS_BASE = "claude-opus-4-5-20251101"
 GEMINI_3_BASE = "gemini-3-pro-preview"
 
 PRICING_PER_1M_TOKENS = {
     GPT_5_1_BASE: {"input": 1.25, "cached_input": 0.125, "output": 10.00},
+    GPT_5_2_BASE: {"input": 1.75, "cached_input": 0.175, "output": 14.00},
     "gpt-5.1-codex-max": {"input": 2.50, "cached_input": 0.25, "output": 20.00},
     CLAUDE_SONNET_BASE: {
         "input": 3.00,
@@ -35,6 +37,11 @@ ORDERED_MODELS = [
     "gpt-5.1-high",
     "gpt-5.1-codex-max-high",
     "gpt-5.1-codex-max-xhigh",
+    "gpt-5.2-none",
+    "gpt-5.2-low",
+    "gpt-5.2-medium",
+    "gpt-5.2-high",
+    "gpt-5.2-xhigh",
     "claude-sonnet-4.5-no-thinking",
     "claude-sonnet-4.5-thinking-1024",
     "claude-sonnet-4.5-thinking-4000",

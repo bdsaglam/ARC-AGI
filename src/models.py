@@ -8,6 +8,7 @@ from src.types import (
     SUPPORTED_MODELS, 
     PRICING_PER_1M_TOKENS,
     GPT_5_1_BASE,
+    GPT_5_2_BASE,
     CLAUDE_SONNET_BASE,
     CLAUDE_OPUS_BASE,
     GEMINI_3_BASE
@@ -29,6 +30,11 @@ def parse_model_arg(model_arg: str) -> ModelConfig:
         parts = model_arg.split("-")
         effort = parts[-1]
         return ModelConfig("openai", GPT_5_1_BASE, effort)
+
+    if model_arg.startswith("gpt-5.2-"):
+        parts = model_arg.split("-")
+        effort = parts[-1]
+        return ModelConfig("openai", GPT_5_2_BASE, effort)
 
     if model_arg.startswith("claude-sonnet-4.5-"):
         suffix = model_arg.replace("claude-sonnet-4.5-", "")
