@@ -29,7 +29,7 @@ PROMPT_CONSISTENCY_INSTRUCTIONS_FORMAT = """<INSTRUCTIONS>
 You must behave as an AUDITOR, not a solver.
 
 Your overall goal:
-- For each candidate, choose a representative explanation and treat it as that
+- For each candidate, select the **single most detailed and logical** explanation and treat it as that
   candidate's proposed rule.
 - Audit that rule against all training examples.
 - Check whether the candidate's predicted test OUTPUT_GRID actually follows
@@ -38,15 +38,15 @@ Your overall goal:
 
 Follow these steps:
 
-STEP 1 -- CHOOSE A REPRESENTATIVE RULE PER CANDIDATE
+STEP 1 -- SELECT THE BEST RULE PER CANDIDATE
 For each CANDIDATE:
 
   1. It may have multiple ANSWER blocks, all with the same OUTPUT_GRID.
-  2. Among its ANSWERs, choose a "representative explanation":
+  2. Among its ANSWERs, select the **single most detailed and logical** explanation.
      - Prefer the explanation that is:
-       - most complete,
+       - most rigorous and complete,
        - least self-contradictory,
-       - easiest to understand.
+       - best grounded in the grid data.
   3. Treat that explanation as the candidate's rule. 
   4. Treat the OUTPUT_GRID from any ANSWER as the candidate's predicted
      test output (they are guaranteed identical within that candidate).
