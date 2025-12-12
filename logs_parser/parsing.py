@@ -15,7 +15,7 @@ def check_correctness(call_val, task_id, test_id, answers):
                     is_correct = False
     return is_correct
 
-def create_call_info(name, data, task_id, test_id, answers):
+def create_call_info(name, data, task_id, test_id, answers, generator=None):
     duration = 0
     cost = 0
     status_str = ""
@@ -34,7 +34,8 @@ def create_call_info(name, data, task_id, test_id, answers):
         "name": name,
         "duration": duration,
         "cost": cost,
-        "status": status_str
+        "status": status_str,
+        "generator": generator
     }
 
 def parse_finish_step(content):
@@ -82,6 +83,11 @@ def parse_finish_step(content):
                         if parsed:
                             evaluations = parsed.get("candidates", [])
                             ranking = parsed.get("final_ranking_by_candidate", [])
+                            
+                            # Fallback: if ranking is missing, sort by score
+                            if not ranking and evaluations:
+                                sorted_evals = sorted(evaluations, key=lambda x: x.get("score", 0), reverse=True)
+                                ranking = [e.get("candidate_id") for e in sorted_evals if "candidate_id" in e]
                             
                             stats_list = []
                             for eval_item in evaluations:
@@ -131,10 +137,29 @@ def parse_nested_step(content, task_id, test_id, answers):
         new_step_name = f"5-{sub_step}"
         cleaned_calls = []
         
-        nested_containers = ["hint_generation", "gemini_gen", "opus_gen"]
+        nested_containers = ["gemini_gen", "opus_gen"]
         
         for call_key, call_val in calls_dict.items():
+            if call_key == "hint_generation" and isinstance(call_val, dict):
+                # Handle hint_generation (direct call object)
+                model = call_val.get("model", "")
+                name = "Hint Generation"
+                if model:
+                    name += f" ({model})"
+                
+                # Check for cost/duration directly in call_val or if they are missing
+                # Some logs might put stats in a wrapper, but schema says it's direct.
+                cleaned_calls.append(create_call_info(name, call_val, task_id, test_id, answers))
+                continue
+
             if call_key in nested_containers and isinstance(call_val, dict):
+                # Determine generator
+                generator_name = None
+                if call_key == "gemini_gen":
+                    generator_name = "Gemini"
+                elif call_key == "opus_gen":
+                    generator_name = "Opus"
+
                 # Process nested calls
                 for inner_call, inner_val in call_val.items():
                     if not isinstance(inner_val, dict):
@@ -149,7 +174,7 @@ def parse_nested_step(content, task_id, test_id, answers):
                     if model:
                         cleaned_name += f" ({model})"
                     
-                    cleaned_calls.append(create_call_info(cleaned_name, inner_val, task_id, test_id, answers))
+                    cleaned_calls.append(create_call_info(cleaned_name, inner_val, task_id, test_id, answers, generator=generator_name))
             else:
                 # Process normal call
                 if "_step_" in call_key:
@@ -157,7 +182,14 @@ def parse_nested_step(content, task_id, test_id, answers):
                 else:
                     cleaned_name = call_key
                 
-                cleaned_calls.append(create_call_info(cleaned_name, call_val, task_id, test_id, answers))
+                # Try to infer generator from call key string for objects_pipeline variants
+                gen_name = None
+                if "gemini_gen" in call_key:
+                    gen_name = "Gemini"
+                elif "opus_gen" in call_key:
+                    gen_name = "Opus"
+                
+                cleaned_calls.append(create_call_info(cleaned_name, call_val, task_id, test_id, answers, generator=gen_name))
         
         result["steps"][new_step_name] = cleaned_calls
         
