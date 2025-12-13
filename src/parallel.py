@@ -95,7 +95,8 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             verbose=verbose,
             task_id=task_id,
             test_index=test_index,
-            use_background=use_background
+            use_background=use_background,
+            run_timestamp=run_timestamp
         )
         duration = time.perf_counter() - start_ts
         print(f"[Temporary] Model {model_name} finished in {duration:.2f}s", file=sys.stderr)
@@ -149,10 +150,11 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
         if run_timestamp:
              log_failure(
                 run_timestamp=run_timestamp,
-                task_id="UNKNOWN", # Passed context is limited here, improved in next refactor if needed
+                task_id=task_id if task_id else "UNKNOWN",
                 run_id=run_id,
                 error=e,
-                model=model_name
+                model=model_name,
+                test_index=test_index
             )
             
         return {"model": model_name, "run_id": run_id, "grid": None, "is_correct": False, "cost": cost, "duration": duration, "prompt": prompt, "full_response": str(e), "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens}

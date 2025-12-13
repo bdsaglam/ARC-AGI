@@ -97,7 +97,10 @@ def calculate_model_stats(task_data):
                         "passes": 0,
                         "zero_duration_calls": 0,
                         "durations": [], 
-                        "costs": []
+                        "costs": [],
+                        "input_tokens": [],
+                        "output_tokens": [],
+                        "cached_tokens": []
                     }
 
                 model_stats[model_name]["total_calls"] += 1
@@ -119,6 +122,16 @@ def calculate_model_stats(task_data):
                 # Collect valid costs
                 if isinstance(call.get("cost"), (int, float)):
                      model_stats[model_name]["costs"].append(call["cost"])
+
+                # Collect token stats
+                if isinstance(call.get("input_tokens"), (int, float)):
+                    model_stats[model_name]["input_tokens"].append(call["input_tokens"])
+                
+                if isinstance(call.get("output_tokens"), (int, float)):
+                    model_stats[model_name]["output_tokens"].append(call["output_tokens"])
+                
+                if isinstance(call.get("cached_tokens"), (int, float)):
+                    model_stats[model_name]["cached_tokens"].append(call["cached_tokens"])
     
     return model_stats
 

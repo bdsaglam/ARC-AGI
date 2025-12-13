@@ -1,6 +1,7 @@
 import argparse
 import os
 import re
+import json
 
 try:
     from .utils import load_answers
@@ -88,8 +89,45 @@ def parse_logs(directory):
     # Calculate model stats
     model_stats = calculate_model_stats(task_data)
 
+    # Check for failures file
+    failure_count = 0
+    max_token_failure_count = 0
+    timeout_failure_count = 0
+    other_failure_count = 0
+    overlap_failure_count = 0
+
+    for f in files:
+        if f.endswith("_failures.jsonl"):
+            try:
+                with open(os.path.join(directory, f), 'r') as fp:
+                    for line in fp:
+                        if line.strip():
+                            failure_count += 1
+                            try:
+                                record = json.loads(line)
+                                error_msg = record.get("error_message", "")
+                                
+                                is_max_token = "max_output_tokens" in error_msg
+                                is_timeout = "timed out after 3600s" in error_msg
+                                
+                                if is_max_token:
+                                    max_token_failure_count += 1
+                                if is_timeout:
+                                    timeout_failure_count += 1
+                                
+                                if is_max_token and is_timeout:
+                                    overlap_failure_count += 1
+                                elif not is_max_token and not is_timeout:
+                                    other_failure_count += 1
+                                    
+                            except json.JSONDecodeError:
+                                other_failure_count += 1 # Count as 'other' (parse error)
+            except Exception as e:
+                print(f"Warning: Could not read failure file {f}: {e}")
+            break
+
     # Print Report
-    print_full_report(task_data, model_stats)
+    print_full_report(task_data, model_stats, failure_count, max_token_failure_count, timeout_failure_count, other_failure_count, overlap_failure_count)
 
 def main():
     parser = argparse.ArgumentParser(description="Parse log files to extract task and test IDs.")

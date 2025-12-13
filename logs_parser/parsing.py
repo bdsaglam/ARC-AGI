@@ -18,11 +18,17 @@ def check_correctness(call_val, task_id, test_id, answers):
 def create_call_info(name, data, task_id, test_id, answers, generator=None):
     duration = 0
     cost = 0
+    input_tokens = 0
+    output_tokens = 0
+    cached_tokens = 0
     status_str = ""
     
     if isinstance(data, dict):
         duration = data.get("duration_seconds", 0)
         cost = data.get("total_cost", 0)
+        input_tokens = data.get("input_tokens", 0)
+        output_tokens = data.get("output_tokens", 0)
+        cached_tokens = data.get("cached_tokens", 0)
         is_correct = check_correctness(data, task_id, test_id, answers)
         
         if is_correct is True:
@@ -34,6 +40,9 @@ def create_call_info(name, data, task_id, test_id, answers, generator=None):
         "name": name,
         "duration": duration,
         "cost": cost,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cached_tokens": cached_tokens,
         "status": status_str,
         "generator": generator
     }
@@ -65,6 +74,9 @@ def parse_finish_step(content):
 
                         duration = judge_data.get("duration_seconds", 0)
                         cost = judge_data.get("total_cost", 0)
+                        input_tokens = judge_data.get("input_tokens", 0)
+                        output_tokens = judge_data.get("output_tokens", 0)
+                        cached_tokens = judge_data.get("cached_tokens", 0)
                         model = judge_data.get("model", "")
                         
                         display_name = f"Judge ({judge_name.capitalize()})"
@@ -75,6 +87,9 @@ def parse_finish_step(content):
                             "name": display_name,
                             "duration": duration,
                             "cost": cost,
+                            "input_tokens": input_tokens,
+                            "output_tokens": output_tokens,
+                            "cached_tokens": cached_tokens,
                             "status": ""
                         })
                         

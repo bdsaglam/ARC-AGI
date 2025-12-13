@@ -27,6 +27,7 @@ def call_gemini(
     verbose: bool = False,
     task_id: str = None,
     test_index: int = None,
+    run_timestamp: str = None,
 ) -> ModelResponse:
     
     model = config.base_model
@@ -109,7 +110,9 @@ def call_gemini(
         response = run_with_retry(
             lambda: _safe_send(message),
             task_id=task_id,
-            test_index=test_index
+            test_index=test_index,
+            run_timestamp=run_timestamp,
+            model_name=model
         )
         
         try:
@@ -135,7 +138,9 @@ def call_gemini(
             response = run_with_retry(
                 lambda: _safe_send(message),
                 task_id=task_id,
-                test_index=test_index
+                test_index=test_index,
+                run_timestamp=run_timestamp,
+                model_name=model
             )
             
             text_parts = []

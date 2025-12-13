@@ -23,10 +23,13 @@ def call_openai_internal(
     task_id: str = None,
     test_index: int = None,
     use_background: bool = False,
+    run_timestamp: str = None,
 ) -> ModelResponse:
     
     model = config.base_model
     reasoning_effort = str(config.config) # Cast to string for safety
+    last_failed_job_id = None
+    is_downgraded_retry = False
 
     def _map_exception(e: Exception):
         # 1. Known SDK Retryables
@@ -59,6 +62,7 @@ def call_openai_internal(
     def _solve_background(p: str) -> ModelResponse:
         import time
         import random
+        nonlocal reasoning_effort, last_failed_job_id, is_downgraded_retry
 
         content = [{"type": "input_text", "text": p}]
         if image_path:
@@ -78,9 +82,13 @@ def call_openai_internal(
             "timeout": 60, # Timeout for the submit request itself
             "background": True,
             "store": True,
+            "max_output_tokens": 120000,
         }
         if reasoning_effort != "none":
             kwargs["reasoning"] = {"effort": reasoning_effort}
+        
+        if last_failed_job_id:
+            kwargs["previous_response_id"] = last_failed_job_id
 
         # 1. Submit Job
         def _submit():
@@ -89,13 +97,13 @@ def call_openai_internal(
             except Exception as e:
                 _map_exception(e)
         
-        job = run_with_retry(lambda: _submit(), task_id=task_id, test_index=test_index)
+        job = run_with_retry(lambda: _submit(), task_id=task_id, test_index=test_index, run_timestamp=run_timestamp, model_name=model)
         job_id = job.id
         if verbose:
             print(f"[BACKGROUND] [{model}] Job submitted. ID: {job_id}")
 
         # 2. Poll for Completion
-        max_wait_time = 3600  # 60 minutes
+        max_wait_time = 100  # 120 minutes
         start_time = time.time()
         poll_interval_base = 2.0
         last_log_time = time.time()
@@ -104,7 +112,17 @@ def call_openai_internal(
             # Check Timeout
             elapsed = time.time() - start_time
             if elapsed > max_wait_time:
-                raise NonRetryableProviderError(f"OpenAI Background Job {job_id} timed out after {max_wait_time}s")
+                if reasoning_effort == "xhigh":
+                    logger.warning(f"[BACKGROUND] Downgrading reasoning from xhigh to high due to Timeout (Job {job_id})")
+                    reasoning_effort = "high"
+                    last_failed_job_id = job_id
+                    is_downgraded_retry = True
+                    raise RetryableProviderError(f"OpenAI Background Job {job_id} timed out after {max_wait_time}s")
+                
+                if is_downgraded_retry:
+                    raise NonRetryableProviderError(f"OpenAI Background Job {job_id} timed out after {max_wait_time}s (Downgraded Retry Failed)")
+
+                raise RetryableProviderError(f"OpenAI Background Job {job_id} timed out after {max_wait_time}s")
 
             # Logging every ~30s
             if verbose and (time.time() - last_log_time > 30):
@@ -118,7 +136,7 @@ def call_openai_internal(
                 except Exception as e:
                     _map_exception(e)
 
-            job = run_with_retry(lambda: _retrieve(), task_id=task_id, test_index=test_index)
+            job = run_with_retry(lambda: _retrieve(), task_id=task_id, test_index=test_index, run_timestamp=run_timestamp, model_name=model)
 
             if job.status in ("queued", "in_progress"):
                 # Sleep with jitter
@@ -155,6 +173,20 @@ def call_openai_internal(
             
             elif job.status in ("cancelled", "incomplete"):
                  reason = getattr(job, 'incomplete_details', 'Unknown')
+                 reason_str = str(reason)
+                 if "max_output_tokens" in reason_str or "token_limit" in reason_str:
+                     if reasoning_effort == "xhigh":
+                         logger.warning(f"[BACKGROUND] Downgrading reasoning from xhigh to high due to Token Limit (Job {job_id})")
+                         reasoning_effort = "high"
+                         last_failed_job_id = job_id
+                         is_downgraded_retry = True
+                         raise RetryableProviderError(f"OpenAI Background Job {job_id} hit token limit: {reason}")
+                     
+                     if is_downgraded_retry:
+                         raise NonRetryableProviderError(f"OpenAI Background Job {job_id} hit token limit after downgrade: {reason}")
+
+                     raise RetryableProviderError(f"OpenAI Background Job {job_id} hit token limit: {reason}")
+                 
                  raise NonRetryableProviderError(f"OpenAI Background Job {job_id} ended with status={job.status}, reason={reason}")
             
             else:
@@ -221,7 +253,9 @@ def call_openai_internal(
         result = run_with_retry(
             lambda: _call_and_accumulate(),
             task_id=task_id,
-            test_index=test_index
+            test_index=test_index,
+            run_timestamp=run_timestamp,
+            model_name=model
         )
 
         text_output = result["text"]
@@ -265,7 +299,9 @@ def call_openai_internal(
             response = run_with_retry(
                 lambda: _create_safe(),
                 task_id=task_id,
-                test_index=test_index
+                test_index=test_index,
+                run_timestamp=run_timestamp,
+                model_name=model
             )
             
             text_output = ""
@@ -293,7 +329,9 @@ def call_openai_internal(
         return run_with_retry(
             lambda: _solve_background(prompt),
             task_id=task_id,
-            test_index=test_index
+            test_index=test_index,
+            run_timestamp=run_timestamp,
+            model_name=model
         )
 
     return orchestrate_two_stage(_solve, _explain, prompt, return_strategy, verbose, image_path)

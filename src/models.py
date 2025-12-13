@@ -106,6 +106,7 @@ def call_model(
     task_id: str = None,
     test_index: int = None,
     use_background: bool = False,
+    run_timestamp: str = None,
 ) -> ModelResponse:
     config = parse_model_arg(model_arg)
 
@@ -120,6 +121,7 @@ def call_model(
             task_id=task_id,
             test_index=test_index,
             use_background=use_background,
+            run_timestamp=run_timestamp,
         )
     elif config.provider == "anthropic":
         if not anthropic_client:
@@ -133,6 +135,7 @@ def call_model(
             verbose=verbose,
             task_id=task_id,
             test_index=test_index,
+            run_timestamp=run_timestamp,
         )
     elif config.provider == "google":
         if not google_keys:
@@ -146,6 +149,7 @@ def call_model(
             verbose=verbose,
             task_id=task_id,
             test_index=test_index,
+            run_timestamp=run_timestamp,
         )
 
     raise ValueError(f"Unknown provider {config.provider}")

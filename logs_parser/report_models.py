@@ -42,28 +42,36 @@ def print_timing_stats(model_stats, max_model_len, sorted_models):
         print(f"{m:<{max_model_len}}  {avg_time:<10.2f}  {p95:<10.2f}  {max_time:.2f}")
 
 def print_cost_stats(model_stats, max_model_len, sorted_models):
-    print("\n" + "-" * 80)
+    print("\n" + "-" * 130)
     print("Model Cost Statistics")
-    print("-" * 80)
+    print("-" * 130)
 
     grand_total_cost = sum(sum(stats["costs"]) for stats in model_stats.values())
 
-    print(f"{ 'Model':<{max_model_len}}  {'Avg Cost':<10}  {'Total Cost':<12}  {'% of Total'}")
+    print(f"{ 'Model':<{max_model_len}}  {'Avg Cost':<10}  {'Total Cost':<12}  {'% of Total':<12} {'Avg Input':<10} {'Avg Output':<10} {'Avg Cached':<10}")
 
     for m in sorted_models:
         stats = model_stats[m]
         costs = stats["costs"]
         
         if not costs:
-             print(f"{m:<{max_model_len}}  {'-':<10}  {'-':<12}  {'-'}")
+             print(f"{m:<{max_model_len}}  {'-':<10}  {'-':<12}  {'-':<12} {'-':<10} {'-':<10} {'-':<10}")
              continue
         
         avg_cost = statistics.mean(costs)
         total_cost = sum(costs)
         
         percentage_of_total = (total_cost / grand_total_cost) * 100 if grand_total_cost > 0 else 0
+
+        input_tokens = stats.get("input_tokens", [])
+        output_tokens = stats.get("output_tokens", [])
+        cached_tokens = stats.get("cached_tokens", [])
+
+        avg_input = statistics.mean(input_tokens) if input_tokens else 0
+        avg_output = statistics.mean(output_tokens) if output_tokens else 0
+        avg_cached = statistics.mean(cached_tokens) if cached_tokens else 0
         
-        print(f"{m:<{max_model_len}}  ${avg_cost:<9.4f}  ${total_cost:<11.4f}  {percentage_of_total:8.2f}%")
+        print(f"{m:<{max_model_len}}  ${avg_cost:<9.4f}  ${total_cost:<11.4f}  {percentage_of_total:8.2f}%    {avg_input:<10.1f} {avg_output:<10.1f} {avg_cached:<10.1f}")
 
 def print_zero_duration_stats(model_stats, max_model_len, sorted_models):
     print("\n" + "-" * 80)

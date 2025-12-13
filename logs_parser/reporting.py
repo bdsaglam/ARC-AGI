@@ -11,7 +11,7 @@ except ImportError:
     from report_strategies import print_strategy_stats, print_methodology_stats
     from report_judges import print_judge_performance
 
-def print_full_report(task_data, model_stats):
+def print_full_report(task_data, model_stats, failure_count=0, max_token_failure_count=0, timeout_failure_count=0, other_failure_count=0, overlap_failure_count=0):
     # Determine max name length for pretty printing
     max_name_len = 0
     for key in task_data:
@@ -85,3 +85,13 @@ def print_full_report(task_data, model_stats):
     print_judge_performance(task_data)
     print_failed_task_model_stats(task_data)
     print_zero_duration_stats(model_stats, max_model_len, sorted_models)
+
+    if failure_count > 0:
+        print("\n" + "-" * 80)
+        print("Failures")
+        print("-" * 80)
+        print(f"{'Total Errors':<25} {failure_count}")
+        print(f"{'Max Token Errors':<25} {max_token_failure_count}")
+        print(f"{'Timeout Errors':<25} {timeout_failure_count}")
+        print(f"{'Other Errors':<25} {other_failure_count}")
+        print(f"{'Overlapping Errors':<25} {overlap_failure_count}")

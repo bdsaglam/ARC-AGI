@@ -1,5 +1,5 @@
 # --- Core model clients ---
-openai==2.9.0
+openai==2.11.0
 anthropic
 httpx==0.28.1
 

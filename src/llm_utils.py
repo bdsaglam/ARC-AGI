@@ -4,7 +4,7 @@ import random
 from typing import Callable, Any, Optional
 
 from src.types import ModelResponse
-from src.logging import get_logger
+from src.logging import get_logger, log_failure
 from src.errors import RetryableProviderError, UnknownProviderError
 
 logger = get_logger("llm_utils")
@@ -13,7 +13,9 @@ def run_with_retry(
     func: Callable[[], Any],
     max_retries: int = 3,
     task_id: str = None,
-    test_index: int = None
+    test_index: int = None,
+    run_timestamp: str = None,
+    model_name: str = None
 ) -> Any:
     """
     Generic retry loop helper using RetryableProviderError.
@@ -29,6 +31,20 @@ def run_with_retry(
             return func()
         except RetryableProviderError as e:
             duration = time.perf_counter() - start_ts
+            
+            # Log the retryable failure
+            if run_timestamp:
+                log_failure(
+                    run_timestamp=run_timestamp,
+                    task_id=task_id if task_id else "UNKNOWN",
+                    run_id="RETRY_LOOP",
+                    error=e,
+                    model=model_name if model_name else "UNKNOWN",
+                    step="RETRY",
+                    test_index=test_index,
+                    is_retryable=True
+                )
+
             if attempt == max_retries - 1:
                 raise e
             

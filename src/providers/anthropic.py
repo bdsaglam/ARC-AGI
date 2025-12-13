@@ -22,6 +22,7 @@ def call_anthropic(
     verbose: bool = False,
     task_id: str = None,
     test_index: int = None,
+    run_timestamp: str = None,
 ) -> ModelResponse:
     MODEL_MAX_TOKENS = 64000
     
@@ -95,7 +96,9 @@ def call_anthropic(
         final = run_with_retry(
             lambda: _safe_stream(**kw),
             task_id=task_id,
-            test_index=test_index
+            test_index=test_index,
+            run_timestamp=run_timestamp,
+            model_name=model
         )
         
         text_parts = []
@@ -124,7 +127,9 @@ def call_anthropic(
             final = run_with_retry(
                 lambda: _safe_stream(**kw),
                 task_id=task_id,
-                test_index=test_index
+                test_index=test_index,
+                run_timestamp=run_timestamp,
+                model_name=model
             )
             
             text_parts = []

@@ -142,7 +142,8 @@ def log_failure(
     error: Exception,
     model: str = None,
     step: str = None,
-    test_index: int = None
+    test_index: int = None,
+    is_retryable: bool = False
 ):
     """
     Logs a structured failure record to a JSONL file.
@@ -163,7 +164,8 @@ def log_failure(
             "run_id": run_id,
             "error_type": type(error).__name__,
             "error_message": str(error),
-            "stack_trace": traceback.format_exc()
+            "stack_trace": traceback.format_exc(),
+            "is_retryable": is_retryable
         }
 
         # Serialize safely (handle non-serializable types)

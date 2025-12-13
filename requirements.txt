@@ -21,7 +21,7 @@ jiter==0.12.0
 kiwisolver==1.4.9
 matplotlib==3.10.7
 numpy==2.3.5
-openai==2.9.0
+openai==2.11.0
 packaging==25.0
 pillow==12.0.0
 proto-plus==1.26.1
