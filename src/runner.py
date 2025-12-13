@@ -17,7 +17,7 @@ def run_app(
     task=None,
     task_directory=None,
     test=1,
-    task_workers=20,
+    task_workers=60,
     startup_delay=20.0,
     task_limit=None,
     task_selection=None,
