@@ -99,7 +99,7 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             run_timestamp=run_timestamp
         )
         duration = time.perf_counter() - start_ts
-                full_response = response.text
+        full_response = response.text
         input_tokens = response.prompt_tokens
         output_tokens = response.completion_tokens
         cached_tokens = response.cached_tokens
