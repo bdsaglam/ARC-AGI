@@ -94,7 +94,8 @@ def calculate_model_stats(task_data):
                     model_stats[model_name] = {
                         "solver_attempts": 0, 
                         "total_calls": 0,
-                        "passes": 0, 
+                        "passes": 0,
+                        "zero_duration_calls": 0,
                         "durations": [], 
                         "costs": []
                     }
@@ -107,9 +108,13 @@ def calculate_model_stats(task_data):
                     if status == "PASS":
                         model_stats[model_name]["passes"] += 1
                 
-                # Collect valid durations
-                if isinstance(call.get("duration"), (int, float)) and call["duration"] > 0:
-                     model_stats[model_name]["durations"].append(call["duration"])
+                # Collect valid durations and count zero durations
+                duration = call.get("duration")
+                if isinstance(duration, (int, float)):
+                    if duration > 0:
+                        model_stats[model_name]["durations"].append(duration)
+                    elif duration == 0:
+                        model_stats[model_name]["zero_duration_calls"] += 1
 
                 # Collect valid costs
                 if isinstance(call.get("cost"), (int, float)):

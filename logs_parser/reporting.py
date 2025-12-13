@@ -1,12 +1,12 @@
 try:
     from .stats import determine_strategies_status
-    from .report_models import print_model_summary, print_timing_stats, print_cost_stats
+    from .report_models import print_model_summary, print_timing_stats, print_cost_stats, print_zero_duration_stats
     from .report_tasks import print_task_summary, print_failed_task_model_stats
     from .report_strategies import print_strategy_stats, print_methodology_stats
     from .report_judges import print_judge_performance
 except ImportError:
     from stats import determine_strategies_status
-    from report_models import print_model_summary, print_timing_stats, print_cost_stats
+    from report_models import print_model_summary, print_timing_stats, print_cost_stats, print_zero_duration_stats
     from report_tasks import print_task_summary, print_failed_task_model_stats
     from report_strategies import print_strategy_stats, print_methodology_stats
     from report_judges import print_judge_performance
@@ -84,3 +84,4 @@ def print_full_report(task_data, model_stats):
     print_methodology_stats(task_data)
     print_judge_performance(task_data)
     print_failed_task_model_stats(task_data)
+    print_zero_duration_stats(model_stats, max_model_len, sorted_models)

@@ -64,3 +64,16 @@ def print_cost_stats(model_stats, max_model_len, sorted_models):
         percentage_of_total = (total_cost / grand_total_cost) * 100 if grand_total_cost > 0 else 0
         
         print(f"{m:<{max_model_len}}  ${avg_cost:<9.4f}  ${total_cost:<11.4f}  {percentage_of_total:8.2f}%")
+
+def print_zero_duration_stats(model_stats, max_model_len, sorted_models):
+    print("\n" + "-" * 80)
+    print("Zero Duration Calls")
+    print("-" * 80)
+    
+    print(f"{ 'Model':<{max_model_len}}  {'Count'}")
+    
+    for m in sorted_models:
+        stats = model_stats[m]
+        zero_count = stats.get("zero_duration_calls", 0)
+        
+        print(f"{m:<{max_model_len}}  {zero_count}")
