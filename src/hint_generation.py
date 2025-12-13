@@ -138,7 +138,7 @@ HINT_END
             verbose=verbose
         )
         duration = time.perf_counter() - start_ts
-        print(f"[Temporary] Model {hint_model_arg} (Hint) finished in {duration:.2f}s", file=sys.stderr)
+
         
         # Calculate cost
         cost = 0.0
