@@ -56,6 +56,7 @@ def extract_tag_content(text: str, tag_name: str) -> str | None:
     return None
 
 def run_single_model(model_name, run_id, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, step_name=None, use_background=False):
+    original_model_name = model_name
     prefix = f"[{run_id}]"
     if verbose:
         print(f"{prefix} Initiating call...")
@@ -138,13 +139,13 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
                     print(f"{prefix} Result: UNKNOWN (No Ground Truth)")
                     print(grid_text)
             
-            return {"model": model_name, "run_id": run_id, "grid": predicted_grid, "is_correct": is_correct, "cost": cost, "duration": duration, "prompt": prompt, "full_response": full_response, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens}
+            return {"model": model_name, "requested_model": original_model_name, "run_id": run_id, "grid": predicted_grid, "is_correct": is_correct, "cost": cost, "duration": duration, "prompt": prompt, "full_response": full_response, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens}
                     
         except ValueError as e:
             if verbose:
                 print(f"{prefix} Result: FAIL (Parse Error: {e})")
                 print(f"\n{prefix} Raw Output:\n{grid_text}")
-            return {"model": model_name, "run_id": run_id, "grid": None, "is_correct": False, "cost": cost, "duration": duration, "prompt": prompt, "full_response": full_response, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens}
+            return {"model": model_name, "requested_model": original_model_name, "run_id": run_id, "grid": None, "is_correct": False, "cost": cost, "duration": duration, "prompt": prompt, "full_response": full_response, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens}
 
     except Exception as e:
         # Loud error reporting to bypass buffering
@@ -166,7 +167,7 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
                 test_index=test_index
             )
             
-        return {"model": model_name, "run_id": run_id, "grid": None, "is_correct": False, "cost": cost, "duration": duration, "prompt": prompt, "full_response": str(e), "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens}
+        return {"model": model_name, "requested_model": original_model_name, "run_id": run_id, "grid": None, "is_correct": False, "cost": cost, "duration": duration, "prompt": prompt, "full_response": str(e), "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens}
 
 def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, completion_message: str = None, on_task_complete=None, use_background=False):
     all_results = []
