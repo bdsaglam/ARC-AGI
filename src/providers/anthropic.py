@@ -3,6 +3,7 @@ import base64
 import mimetypes
 from typing import Union, Optional
 
+import httpx
 import anthropic
 from anthropic import Anthropic
 
@@ -45,6 +46,10 @@ def call_anthropic(
 
     def _safe_stream(**kw):
         try:
+            if not getattr(_safe_stream, "_has_simulated_failure", False):
+                _safe_stream._has_simulated_failure = True
+                raise anthropic.InternalServerError(message="Simulated 500 Error for Testing", response=httpx.Response(500, request=httpx.Request("POST", "https://api.anthropic.com")), body=None)
+
             with client.messages.stream(**kw) as stream:
                 for _ in stream.text_stream: pass
                 return stream.get_final_message()
