@@ -107,17 +107,16 @@ def call_openai_internal(
                 except Exception as e:
                     _map_exception(e)
             
-            job = run_with_retry(lambda: _submit(), task_id=task_id, test_index=test_index, run_timestamp=run_timestamp, model_name=full_model_name, timing_tracker=timing_tracker, log_success=False)
-            job_id = job.id
-            if verbose:
-                print(f"[BACKGROUND] [{model}] Job submitted. ID: {job_id}")
-
-            # 2. Poll for Completion
-            max_wait_time = 10  # 10 seconds
-            start_time = time.time()
-            poll_interval_base = 2.0
-            last_log_time = time.time()
-
+                    job = run_with_retry(lambda: _submit(), task_id=task_id, test_index=test_index, run_timestamp=run_timestamp, model_name=full_model_name, timing_tracker=timing_tracker, log_success=False)
+                    job_id = job.id
+                    if verbose:
+                        print(f"[BACKGROUND] [{model}] Job submitted. ID: {job_id}")
+            
+                    # 2. Poll for Completion
+                    max_wait_time = 1800  # 30 minutes
+                    start_time = time.time()
+                    poll_interval_base = 2.0
+                    last_log_time = time.time()
             while True:
                 # Check Timeout
                 elapsed = time.time() - start_time
