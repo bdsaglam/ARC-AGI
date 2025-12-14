@@ -115,9 +115,10 @@ def call_openai_internal(
         while True:
             # Check Timeout
             elapsed = time.time() - start_time
+            context_str = f"[{task_id}:{test_index}] ({step_name})" if task_id and step_name else ""
             if elapsed > max_wait_time:
                 if reasoning_effort == "xhigh":
-                    logger.warning(f"[BACKGROUND] OpenAI Job {job_id} timed out after {max_wait_time}s. Falling back to Claude Opus...")
+                    logger.warning(f"[BACKGROUND] {context_str} OpenAI Job {job_id} timed out after {max_wait_time}s. Falling back to Claude Opus...")
                     
                     if run_timestamp:
                         log_failure(
@@ -150,7 +151,7 @@ def call_openai_internal(
                     return response
 
                 elif reasoning_effort == "low":
-                    logger.warning(f"[BACKGROUND] OpenAI Job {job_id} (low) timed out after {max_wait_time}s. Falling back to Claude Opus (no-thinking)...")
+                    logger.warning(f"[BACKGROUND] {context_str} OpenAI Job {job_id} (low) timed out after {max_wait_time}s. Falling back to Claude Opus (no-thinking)...")
                     
                     if run_timestamp:
                         log_failure(
@@ -238,8 +239,9 @@ def call_openai_internal(
                  reason = getattr(job, 'incomplete_details', 'Unknown')
                  reason_str = str(reason)
                  if "max_output_tokens" in reason_str or "token_limit" in reason_str:
+                     context_str = f"[{task_id}:{test_index}] ({step_name})" if task_id and step_name else ""
                      if reasoning_effort == "xhigh":
-                         logger.warning(f"[BACKGROUND] OpenAI Job {job_id} hit token limit: {reason}. Falling back to Claude Opus...")
+                         logger.warning(f"[BACKGROUND] {context_str} OpenAI Job {job_id} hit token limit: {reason}. Falling back to Claude Opus...")
                          
                          if run_timestamp:
                              log_failure(
@@ -272,7 +274,7 @@ def call_openai_internal(
                          return response
 
                      elif reasoning_effort == "low":
-                         logger.warning(f"[BACKGROUND] OpenAI Job {job_id} hit token limit: {reason}. Falling back to Claude Opus (no-thinking)...")
+                         logger.warning(f"[BACKGROUND] {context_str} OpenAI Job {job_id} hit token limit: {reason}. Falling back to Claude Opus (no-thinking)...")
                          
                          if run_timestamp:
                              log_failure(
