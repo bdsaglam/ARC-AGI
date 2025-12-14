@@ -18,10 +18,10 @@ def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: boo
     try:
         if is_testing:
             # Models for --solver-testing
-            models_step1 = ["claude-sonnet-4.5-no-thinking", "gpt-5.1-none", "claude-sonnet-4.5-no-thinking", "gpt-5.1-none", "claude-opus-4.5-no-thinking"]
-            models_step3 = ["claude-sonnet-4.5-no-thinking", "gpt-5.1-none"]
-            models_step5 = ["claude-sonnet-4.5-no-thinking", "gpt-5.1-none"]
-            hint_generation_model = "gpt-5.1-none"
+            models_step1 = ["claude-sonnet-4.5-no-thinking", "gpt-5.1-low", "claude-sonnet-4.5-no-thinking", "gpt-5.1-low", "claude-opus-4.5-no-thinking"]
+            models_step3 = ["claude-sonnet-4.5-no-thinking", "gpt-5.1-low"]
+            models_step5 = ["claude-sonnet-4.5-no-thinking", "gpt-5.1-low"]
+            hint_generation_model = "gpt-5.1-low"
         else:
             # Models for --solver
             models_step1 = ["claude-opus-4.5-thinking-60000", "gemini-3-high", "gemini-3-high", "gpt-5.2-xhigh", "gpt-5.2-xhigh"]
