@@ -115,3 +115,27 @@ def print_bad_grid_stats(model_stats, max_model_len, sorted_models):
         ex_str = ", ".join(examples)
         
         print(f"{m:<{max_model_len}}  {bad_count:<6}  {ex_str}")
+
+def print_timing_stats_v2(timing_stats, max_model_len):
+    print("\n" + "-" * 80)
+    print("Model Timing Statistics V2 (Detailed Breakdown)")
+    print("-" * 80)
+    
+    print(f"{ 'Model':<{max_model_len}}  {'Count':<8}  {'Avg (s)':<10}  {'95% (s)':<10}  {'Max (s)'}")
+    
+    sorted_models = sorted(timing_stats.keys())
+    
+    for m in sorted_models:
+        stats = timing_stats[m]
+        durations = sorted(stats["durations"])
+        count = stats["count"]
+        
+        if not durations:
+            print(f"{m:<{max_model_len}}  {count:<8}  {'-':<10}  {'-':<10}  {'-'}")
+            continue
+            
+        avg_time = statistics.mean(durations)
+        max_time = max(durations)
+        p95 = calculate_percentile(durations, 0.95)
+
+        print(f"{m:<{max_model_len}}  {count:<8}  {avg_time:<10.2f}  {p95:<10.2f}  {max_time:.2f}")

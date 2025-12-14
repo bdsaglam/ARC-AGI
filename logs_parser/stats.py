@@ -1,5 +1,6 @@
 import statistics
 import json
+import re
 try:
     from .utils import normalize_model_name
 except ImportError:
@@ -160,3 +161,46 @@ def calculate_percentile(data, percentile=0.95):
          return sorted_data[int(k)]
     else:
          return sorted_data[f] * (c - k) + sorted_data[c] * (k - f)
+
+def calculate_timing_stats_v2(task_data):
+    """
+    Aggregates timing statistics from the 'timing_breakdown' field.
+    """
+    timing_stats = {}
+
+    for key in task_data:
+        steps = task_data[key]["steps"]
+        for step_name, calls in steps.items():
+            for call in calls:
+                breakdown = call.get("timing_breakdown", [])
+                for item in breakdown:
+                    model = item.get("model")
+                    duration = item.get("duration")
+                    status = item.get("status")
+                    
+                    if not model or not isinstance(duration, (int, float)):
+                        continue
+                    
+                    model_key = normalize_model_name(model)
+                    
+                    if status == "failed":
+                        error_msg = item.get("error", "Unknown Error")
+                        # Normalize error message
+                        error_msg = re.sub(r"resp_[a-f0-9]+", "resp_ID", error_msg)
+                        error_msg = re.sub(r"wfr_[a-f0-9]+", "wfr_ID", error_msg)
+                        
+                        if "Code: server_error" in error_msg:
+                            error_msg = "OpenAI server_error"
+                            
+                        model_key += f" (Failed: {error_msg})"
+                    
+                    if model_key not in timing_stats:
+                        timing_stats[model_key] = {
+                            "count": 0,
+                            "durations": []
+                        }
+                    
+                    timing_stats[model_key]["count"] += 1
+                    timing_stats[model_key]["durations"].append(duration)
+    
+    return timing_stats

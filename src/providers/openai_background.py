@@ -151,15 +151,24 @@ class OpenAIBackgroundSolver:
                     except Exception as e:
                         _map_openai_exception(e, self.runner.full_model_name)
 
-                job = run_with_retry(
-                    lambda: _retrieve(), 
-                    task_id=self.runner.task_id, 
-                    test_index=self.runner.test_index, 
-                    run_timestamp=self.runner.run_timestamp, 
-                    model_name=self.runner.full_model_name, 
-                    timing_tracker=self.runner.timing_tracker, 
-                    log_success=False
-                )
+                try:
+                    job = run_with_retry(
+                        lambda: _retrieve(), 
+                        task_id=self.runner.task_id, 
+                        test_index=self.runner.test_index, 
+                        run_timestamp=self.runner.run_timestamp, 
+                        model_name=self.runner.full_model_name, 
+                        timing_tracker=self.runner.timing_tracker, 
+                        log_success=False
+                    )
+                except NonRetryableProviderError as e:
+                    # Fallback on 403 Fatal Error (seen in background jobs)
+                    if "OpenAI Fatal Error" in str(e) and "403" in str(e):
+                        if self.runner.reasoning_effort == "xhigh":
+                            return self._fallback_to_claude(prompt, image_path, f"OpenAI 403 Forbidden: {e}", start_attempt_ts, thinking=True)
+                        elif self.runner.reasoning_effort == "low":
+                            return self._fallback_to_claude(prompt, image_path, f"OpenAI 403 Forbidden: {e}", start_attempt_ts, thinking=False)
+                    raise e
 
                 if job.status in ("queued", "in_progress"):
                     sleep_time = poll_interval_base + random.uniform(0, 1.0)
@@ -199,6 +208,14 @@ class OpenAIBackgroundSolver:
                 
                 elif job.status == "failed":
                     err_msg = f"Code: {job.error.code}, Message: {job.error.message}" if job.error else "Unknown error"
+                    
+                    # Fallback on server_error
+                    if job.error and job.error.code == "server_error":
+                        if self.runner.reasoning_effort == "xhigh":
+                            return self._fallback_to_claude(prompt, image_path, f"OpenAI Server Error: {err_msg}", start_attempt_ts, thinking=True)
+                        elif self.runner.reasoning_effort == "low":
+                            return self._fallback_to_claude(prompt, image_path, f"OpenAI Server Error: {err_msg}", start_attempt_ts, thinking=False)
+
                     raise RetryableProviderError(f"OpenAI Background Job {job_id} FAILED: {err_msg}")
                 
                 elif job.status in ("cancelled", "incomplete"):

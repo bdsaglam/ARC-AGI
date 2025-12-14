@@ -22,6 +22,7 @@ def create_call_info(name, data, task_id, test_id, answers, generator=None):
     output_tokens = 0
     cached_tokens = 0
     status_str = ""
+    timing_breakdown = []
     
     if isinstance(data, dict):
         duration = data.get("duration_seconds", 0)
@@ -29,6 +30,7 @@ def create_call_info(name, data, task_id, test_id, answers, generator=None):
         input_tokens = data.get("input_tokens", 0)
         output_tokens = data.get("output_tokens", 0)
         cached_tokens = data.get("cached_tokens", 0)
+        timing_breakdown = data.get("timing_breakdown", [])
         is_correct = check_correctness(data, task_id, test_id, answers)
         
         if is_correct is True:
@@ -58,6 +60,7 @@ def create_call_info(name, data, task_id, test_id, answers, generator=None):
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
         "cached_tokens": cached_tokens,
+        "timing_breakdown": timing_breakdown,
         "status": status_str,
         "generator": generator,
         "extracted_grid_failed": extracted_grid_failed,
@@ -94,6 +97,7 @@ def parse_finish_step(content):
                         input_tokens = judge_data.get("input_tokens", 0)
                         output_tokens = judge_data.get("output_tokens", 0)
                         cached_tokens = judge_data.get("cached_tokens", 0)
+                        timing_breakdown = judge_data.get("timing_breakdown", [])
                         model = judge_data.get("model", "")
                         
                         display_name = f"Judge ({judge_name.capitalize()})"
@@ -107,6 +111,7 @@ def parse_finish_step(content):
                             "input_tokens": input_tokens,
                             "output_tokens": output_tokens,
                             "cached_tokens": cached_tokens,
+                            "timing_breakdown": timing_breakdown,
                             "status": ""
                         })
                         

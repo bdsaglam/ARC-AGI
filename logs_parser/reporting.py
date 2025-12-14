@@ -1,17 +1,17 @@
 try:
     from .stats import determine_strategies_status
-    from .report_models import print_model_summary, print_timing_stats, print_cost_stats, print_zero_duration_stats, print_failed_grid_stats, print_bad_grid_stats
+    from .report_models import print_model_summary, print_timing_stats, print_cost_stats, print_zero_duration_stats, print_failed_grid_stats, print_bad_grid_stats, print_timing_stats_v2
     from .report_tasks import print_task_summary, print_failed_task_model_stats
     from .report_strategies import print_strategy_stats, print_methodology_stats
     from .report_judges import print_judge_performance
 except ImportError:
     from stats import determine_strategies_status
-    from report_models import print_model_summary, print_timing_stats, print_cost_stats, print_zero_duration_stats, print_failed_grid_stats, print_bad_grid_stats
+    from report_models import print_model_summary, print_timing_stats, print_cost_stats, print_zero_duration_stats, print_failed_grid_stats, print_bad_grid_stats, print_timing_stats_v2
     from report_tasks import print_task_summary, print_failed_task_model_stats
     from report_strategies import print_strategy_stats, print_methodology_stats
     from report_judges import print_judge_performance
 
-def print_full_report(task_data, model_stats, failure_count=0, max_token_failure_count=0, timeout_failure_count=0, other_failure_count=0, overlap_failure_count=0):
+def print_full_report(task_data, model_stats, failure_count=0, max_token_failure_count=0, timeout_failure_count=0, other_failure_count=0, overlap_failure_count=0, timing_stats_v2=None, server_failure_count=0, error_403_failure_count=0):
     # Determine max name length for pretty printing
     max_name_len = 0
     for key in task_data:
@@ -79,6 +79,10 @@ def print_full_report(task_data, model_stats, failure_count=0, max_token_failure
     print_task_summary(task_data)
     print_model_summary(model_stats, max_model_len)
     print_timing_stats(model_stats, max_model_len, sorted_models)
+    
+    if timing_stats_v2:
+        print_timing_stats_v2(timing_stats_v2, max_model_len)
+
     print_cost_stats(model_stats, max_model_len, sorted_models)
     print_strategy_stats(total_tasks_count, solved_tasks_count, vote_only_solved_count, score_only_solved_count)
     print_methodology_stats(task_data)
@@ -95,5 +99,7 @@ def print_full_report(task_data, model_stats, failure_count=0, max_token_failure
         print(f"{'Total Errors':<25} {failure_count}")
         print(f"{'Max Token Errors':<25} {max_token_failure_count}")
         print(f"{'Timeout Errors':<25} {timeout_failure_count}")
+        print(f"{'Server Errors':<25} {server_failure_count}")
+        print(f"{'Error Code 403':<25} {error_403_failure_count}")
         print(f"{'Other Errors':<25} {other_failure_count}")
         print(f"{'Overlapping Errors':<25} {overlap_failure_count}")

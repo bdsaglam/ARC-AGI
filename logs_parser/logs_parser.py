@@ -4,15 +4,15 @@ import re
 import json
 
 try:
-    from .utils import load_answers
+    from .utils import load_answers, normalize_model_name
     from .parsing import parse_log_file
-    from .stats import calculate_model_stats
+    from .stats import calculate_model_stats, calculate_timing_stats_v2
     from .reporting import print_full_report
 except ImportError:
     # Fallback for running as script directly
-    from utils import load_answers
+    from utils import load_answers, normalize_model_name
     from parsing import parse_log_file
-    from stats import calculate_model_stats
+    from stats import calculate_model_stats, calculate_timing_stats_v2
     from reporting import print_full_report
 
 def parse_logs(directory):
@@ -88,11 +88,16 @@ def parse_logs(directory):
 
     # Calculate model stats
     model_stats = calculate_model_stats(task_data)
+    
+    # Calculate timing stats v2
+    timing_stats_v2 = calculate_timing_stats_v2(task_data)
 
     # Check for failures file
     failure_count = 0
     max_token_failure_count = 0
     timeout_failure_count = 0
+    server_failure_count = 0
+    error_403_failure_count = 0
     other_failure_count = 0
     overlap_failure_count = 0
 
@@ -109,15 +114,21 @@ def parse_logs(directory):
                                 
                                 is_max_token = "max_output_tokens" in error_msg
                                 is_timeout = "timed out after 3600s" in error_msg
+                                is_server_error = "server_error" in error_msg
+                                is_403 = "Error code: 403" in error_msg
                                 
                                 if is_max_token:
                                     max_token_failure_count += 1
                                 if is_timeout:
                                     timeout_failure_count += 1
+                                if is_server_error:
+                                    server_failure_count += 1
+                                if is_403:
+                                    error_403_failure_count += 1
                                 
                                 if is_max_token and is_timeout:
                                     overlap_failure_count += 1
-                                elif not is_max_token and not is_timeout:
+                                elif not (is_max_token or is_timeout or is_server_error or is_403):
                                     other_failure_count += 1
                                     
                             except json.JSONDecodeError:
@@ -127,7 +138,21 @@ def parse_logs(directory):
             break
 
     # Print Report
-    print_full_report(task_data, model_stats, failure_count, max_token_failure_count, timeout_failure_count, other_failure_count, overlap_failure_count)
+    print_full_report(task_data, model_stats, failure_count, max_token_failure_count, timeout_failure_count, other_failure_count, overlap_failure_count, timing_stats_v2, server_failure_count, error_403_failure_count)
+
+    print("\n--- Task Status Table ---")
+    print("Task:Test,Status,Solved By")
+    for (task_id, test_id), data in sorted(task_data.items()):
+        status_val = data.get("finish_status")
+        status = "SOLVED" if status_val in ["PASS", "SOLVED"] else "FAILED"
+        
+        solved_count = 0
+        for step_name, calls in data.get("steps", {}).items():
+            for call in calls:
+                if call.get("status") == "PASS":
+                    solved_count += 1
+        
+        print(f"{task_id}:{test_id},{status},{solved_count}")
 
 def main():
     parser = argparse.ArgumentParser(description="Parse log files to extract task and test IDs.")
