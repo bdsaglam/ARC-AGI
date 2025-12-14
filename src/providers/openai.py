@@ -24,6 +24,7 @@ def call_openai_internal(
     verbose: bool = False,
     task_id: str = None,
     test_index: int = None,
+    step_name: str = None,
     use_background: bool = False,
     run_timestamp: str = None,
     anthropic_client: Anthropic = None,
@@ -123,9 +124,9 @@ def call_openai_internal(
                             run_timestamp=run_timestamp,
                             task_id=task_id if task_id else "UNKNOWN",
                             run_id="OPENAI_BG_TIMEOUT",
-                            error=RetryableProviderError(f"OpenAI Job {job_id} timed out"),
-                            model=model,
-                            step="solve_background_fallback",
+                            error=RetryableProviderError(f"OpenAI Job {job_id} timed out. Falling back to Claude Opus..."),
+                            model=f"{model}-{reasoning_effort}",
+                            step=step_name if step_name else (task_id if task_id else "UNKNOWN"),
                             test_index=test_index,
                             is_retryable=True
                         )
@@ -156,9 +157,9 @@ def call_openai_internal(
                             run_timestamp=run_timestamp,
                             task_id=task_id if task_id else "UNKNOWN",
                             run_id="OPENAI_BG_TIMEOUT",
-                            error=RetryableProviderError(f"OpenAI Job {job_id} timed out"),
-                            model=model,
-                            step="solve_background_fallback",
+                            error=RetryableProviderError(f"OpenAI Job {job_id} timed out. Falling back to Claude Opus..."),
+                            model=f"{model}-{reasoning_effort}",
+                            step=step_name if step_name else (task_id if task_id else "UNKNOWN"),
                             test_index=test_index,
                             is_retryable=True
                         )
@@ -245,9 +246,9 @@ def call_openai_internal(
                                 run_timestamp=run_timestamp,
                                 task_id=task_id if task_id else "UNKNOWN",
                                 run_id="OPENAI_BG_TOKEN_LIMIT",
-                                error=RetryableProviderError(f"OpenAI Job {job_id} hit token limit: {reason}"),
-                                model=model,
-                                step="solve_background_fallback",
+                                error=RetryableProviderError(f"OpenAI Job {job_id} hit token limit: {reason}. Falling back to Claude Opus..."),
+                                model=f"{model}-{reasoning_effort}",
+                                step=step_name if step_name else (task_id if task_id else "UNKNOWN"),
                                 test_index=test_index,
                                 is_retryable=True
                              )
@@ -278,9 +279,9 @@ def call_openai_internal(
                                 run_timestamp=run_timestamp,
                                 task_id=task_id if task_id else "UNKNOWN",
                                 run_id="OPENAI_BG_TOKEN_LIMIT",
-                                error=RetryableProviderError(f"OpenAI Job {job_id} hit token limit: {reason}"),
-                                model=model,
-                                step="solve_background_fallback",
+                                error=RetryableProviderError(f"OpenAI Job {job_id} hit token limit: {reason}. Falling back to Claude Opus..."),
+                                model=f"{model}-{reasoning_effort}",
+                                step=step_name if step_name else (task_id if task_id else "UNKNOWN"),
                                 test_index=test_index,
                                 is_retryable=True
                              )
@@ -302,11 +303,6 @@ def call_openai_internal(
                          )
                          response.model_name = "claude-opus-4.5-no-thinking"
                          return response
-                     
-                     if is_downgraded_retry:
-                         raise NonRetryableProviderError(f"OpenAI Background Job {job_id} hit token limit after downgrade: {reason}")
-
-                     raise RetryableProviderError(f"OpenAI Background Job {job_id} hit token limit: {reason}")
                  
                  raise NonRetryableProviderError(f"OpenAI Background Job {job_id} ended with status={job.status}, reason={reason}")
             

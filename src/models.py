@@ -105,6 +105,7 @@ def call_model(
     verbose: bool = False,
     task_id: str = None,
     test_index: int = None,
+    step_name: str = None,
     use_background: bool = False,
     run_timestamp: str = None,
 ) -> ModelResponse:
@@ -120,6 +121,7 @@ def call_model(
             verbose=verbose,
             task_id=task_id,
             test_index=test_index,
+            step_name=step_name,
             use_background=use_background,
             run_timestamp=run_timestamp,
             anthropic_client=anthropic_client,

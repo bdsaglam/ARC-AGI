@@ -55,7 +55,7 @@ def extract_tag_content(text: str, tag_name: str) -> str | None:
         return match.group(1).strip()
     return None
 
-def run_single_model(model_name, run_id, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, use_background=False):
+def run_single_model(model_name, run_id, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, step_name=None, use_background=False):
     prefix = f"[{run_id}]"
     if verbose:
         print(f"{prefix} Initiating call...")
@@ -95,6 +95,7 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             verbose=verbose,
             task_id=task_id,
             test_index=test_index,
+            step_name=step_name,
             use_background=use_background,
             run_timestamp=run_timestamp
         )
@@ -188,7 +189,7 @@ def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test
             executor.submit(
                 debug_run_single_model,
                 time.time(), # Capture queue time
-                run["name"], run["run_id"], prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path, run_timestamp, task_id, test_index, use_background
+                run["name"], run["run_id"], prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path, run_timestamp, task_id, test_index, step_name, use_background
             ): run["run_id"]
             for run in run_list
         }

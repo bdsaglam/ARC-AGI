@@ -164,7 +164,7 @@ def log_failure(
             "run_id": run_id,
             "error_type": type(error).__name__,
             "error_message": str(error),
-            "stack_trace": traceback.format_exc(),
+            "stack_trace": traceback.format_exc() if sys.exc_info()[0] else "None (Logical Error)",
             "is_retryable": is_retryable
         }
 
