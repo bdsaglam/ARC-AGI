@@ -20,7 +20,7 @@ def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: boo
             # Models for --solver-testing
             models_step1 = ["claude-opus-4.5-no-thinking", "gpt-5.1-none", "gpt-5.1-low"]
             models_step3 = ["claude-sonnet-4.5-no-thinking", "gpt-5.1-low"]
-            models_step5 = ["claude-opus-4.5-no-thinking", "gpt-5.1-none"]
+            models_step5 = ["claude-opus-4.5-no-thinking", "gpt-5.1-none", "gpt-5.1-low"]
             hint_generation_model = "gpt-5.1-low"
         else:
             # Models for --solver
