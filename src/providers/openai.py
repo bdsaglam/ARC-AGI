@@ -32,6 +32,7 @@ def call_openai_internal(
     
     model = config.base_model
     reasoning_effort = str(config.config) # Cast to string for safety
+    full_model_name = f"{model}-{reasoning_effort}"
     last_failed_job_id = None
     is_downgraded_retry = False
 
@@ -101,7 +102,7 @@ def call_openai_internal(
             except Exception as e:
                 _map_exception(e)
         
-        job = run_with_retry(lambda: _submit(), task_id=task_id, test_index=test_index, run_timestamp=run_timestamp, model_name=model)
+        job = run_with_retry(lambda: _submit(), task_id=task_id, test_index=test_index, run_timestamp=run_timestamp, model_name=full_model_name)
         job_id = job.id
         if verbose:
             print(f"[BACKGROUND] [{model}] Job submitted. ID: {job_id}")
@@ -200,7 +201,7 @@ def call_openai_internal(
                 except Exception as e:
                     _map_exception(e)
 
-            job = run_with_retry(lambda: _retrieve(), task_id=task_id, test_index=test_index, run_timestamp=run_timestamp, model_name=model)
+            job = run_with_retry(lambda: _retrieve(), task_id=task_id, test_index=test_index, run_timestamp=run_timestamp, model_name=full_model_name)
 
             if job.status in ("queued", "in_progress"):
                 # Sleep with jitter
@@ -374,7 +375,7 @@ def call_openai_internal(
             task_id=task_id,
             test_index=test_index,
             run_timestamp=run_timestamp,
-            model_name=model
+            model_name=full_model_name
         )
 
         text_output = result["text"]
@@ -420,7 +421,7 @@ def call_openai_internal(
                 task_id=task_id,
                 test_index=test_index,
                 run_timestamp=run_timestamp,
-                model_name=model
+                model_name=full_model_name
             )
             
             text_output = ""
@@ -450,7 +451,7 @@ def call_openai_internal(
             task_id=task_id,
             test_index=test_index,
             run_timestamp=run_timestamp,
-            model_name=model
+            model_name=full_model_name
         )
 
     return orchestrate_two_stage(_solve, _explain, prompt, return_strategy, verbose, image_path)
