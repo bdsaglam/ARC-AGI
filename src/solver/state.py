@@ -77,6 +77,7 @@ class SolverState:
                     "input_tokens": res.get("input_tokens", 0),
                     "output_tokens": res.get("output_tokens", 0),
                     "cached_tokens": res.get("cached_tokens", 0),
+                    "timing_breakdown": res.get("timing_breakdown"),
                     "Full raw LLM call": res["prompt"],
                     "Full raw LLM response": res["full_response"],
                     "Extracted grid": res["grid"],
