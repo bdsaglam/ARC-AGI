@@ -49,16 +49,21 @@ def run_judge(judge_name, prompt, judge_model, openai_client, anthropic_client, 
         
         result_container["response"] = response_obj.text
         
+        actual_model = getattr(response_obj, "model_name", None) or judge_model
+        
         # Calculate cost
         cost = 0.0
         try:
-            model_config = parse_model_arg(judge_model)
+            model_to_price = actual_model if actual_model != judge_model else judge_model
+            model_config = parse_model_arg(model_to_price)
             cost = calculate_cost(model_config, response_obj)
         except Exception:
             pass
         
         # Capture metrics
-        result_container["model"] = judge_model
+        result_container["model"] = actual_model
+        result_container["requested_model"] = judge_model
+        result_container["actual_model"] = actual_model
         result_container["duration_seconds"] = round(duration, 2)
         result_container["total_cost"] = cost
         result_container["input_tokens"] = response_obj.prompt_tokens

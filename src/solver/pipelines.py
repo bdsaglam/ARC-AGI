@@ -18,7 +18,9 @@ def run_objects_pipeline_variant(state, generator_model_extract, generator_model
         text_A = text_A_full
     
     pipeline_log["extraction"] = {
-        "model": generator_model_extract,
+        "model": res_A.get("model"),
+        "requested_model": res_A.get("requested_model"),
+        "actual_model": res_A.get("model"),
         "prompt": prompt_A,
         "response": text_A_full,
         "extracted_summary": text_A,
@@ -41,7 +43,9 @@ def run_objects_pipeline_variant(state, generator_model_extract, generator_model
         text_B = text_B_full
 
     pipeline_log["transformation"] = {
-        "model": generator_model_transform,
+        "model": res_B.get("model"),
+        "requested_model": res_B.get("requested_model"),
+        "actual_model": res_B.get("model"),
         "prompt": prompt_B,
         "response": text_B_full,
         "extracted_summary": text_B,

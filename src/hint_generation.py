@@ -139,11 +139,13 @@ HINT_END
         )
         duration = time.perf_counter() - start_ts
 
+        actual_model = getattr(response, "model_name", None) or hint_model_arg
         
         # Calculate cost
         cost = 0.0
         try:
-            model_config = parse_model_arg(hint_model_arg)
+            model_to_price = actual_model if actual_model != hint_model_arg else hint_model_arg
+            model_config = parse_model_arg(model_to_price)
             cost = calculate_cost(model_config, response)
         except Exception:
             pass
@@ -160,6 +162,8 @@ HINT_END
             
         return {
             "hint": hint,
+            "requested_model": hint_model_arg,
+            "actual_model": actual_model,
             "prompt": prompt,
             "full_response": response.text,
             "duration": duration,
