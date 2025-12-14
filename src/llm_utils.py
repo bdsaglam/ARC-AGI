@@ -5,7 +5,7 @@ from typing import Callable, Any, Optional
 
 from src.types import ModelResponse
 from src.logging import get_logger, log_failure
-from src.errors import RetryableProviderError, UnknownProviderError
+from src.errors import RetryableProviderError, UnknownProviderError, NonRetryableProviderError
 
 logger = get_logger("llm_utils")
 
@@ -24,11 +24,24 @@ def run_with_retry(
     """
     # Fixed delays for the 2 retries
     retry_delays = [60, 300]
+    
+    # Construct log prefix
+    log_prefix = ""
+    if task_id:
+        log_prefix += f"[Task: {task_id}"
+        if test_index is not None:
+            log_prefix += f":{test_index}"
+        log_prefix += "] "
 
     for attempt in range(max_retries):
         try:
             start_ts = time.perf_counter()
             return func()
+        except NonRetryableProviderError as e:
+            # Log terminal errors with context before re-raising
+            logger.error(f"{log_prefix}Non-retryable error: {e}")
+            raise e
+            
         except RetryableProviderError as e:
             duration = time.perf_counter() - start_ts
             
@@ -46,20 +59,19 @@ def run_with_retry(
                 )
 
             if attempt == max_retries - 1:
+                logger.error(f"{log_prefix}Max retries ({max_retries}) exceeded. Final error: {e}")
                 raise e
             
             if attempt < len(retry_delays):
                 sleep_time = retry_delays[attempt]
             else:
                 sleep_time = retry_delays[-1]
-
-            msg_text = f"Retryable error: {e}. Retrying in {sleep_time}s..."
             
             if isinstance(e, UnknownProviderError):
-                logger.error(f"!!! UNKNOWN ERROR (after {duration:.2f}s) - RETRYING (Attempt {attempt + 1}/{max_retries}) !!!")
-                logger.error(f"Error details: {e}")
+                logger.error(f"{log_prefix}!!! UNKNOWN ERROR (after {duration:.2f}s) - RETRYING (Attempt {attempt + 1}/{max_retries}) !!!")
+                logger.error(f"{log_prefix}Error details: {e}")
             else:
-                logger.warning(f"Retryable error (after {duration:.2f}s): {e}. Retrying in {sleep_time}s (Attempt {attempt + 1}/{max_retries})...")
+                logger.warning(f"{log_prefix}Retryable error (after {duration:.2f}s): {e}. Retrying in {sleep_time}s (Attempt {attempt + 1}/{max_retries})...")
             
             time.sleep(sleep_time)
             
