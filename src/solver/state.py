@@ -219,5 +219,7 @@ class SolverState:
         self.set_status(phase="Finished")
         self.print_summary(outcome)
         
+        self.usage_stats["total_duration"] = time.time() - self.start_time
+        
         self.close()
         return picked_solutions, self.usage_stats
