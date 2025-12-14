@@ -78,7 +78,8 @@ def run_judge(judge_name, prompt, judge_model, openai_client, anthropic_client, 
             result_container["parsed"] = parsed_json
             return parsed_json
         else:
-            print(f"[pick_solution_v2] {judge_name} Judge: Could not parse JSON. Response start: {response_obj.text[:500]}")
+            if verbose >= 1:
+                print(f"[pick_solution_v2] {judge_name} Judge: Could not parse JSON. Response start: {response_obj.text[:500]}")
             
     except Exception as e:
         print(f"[pick_solution_v2] {judge_name} Judge Error: {e}")
