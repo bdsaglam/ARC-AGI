@@ -60,7 +60,7 @@ def run_step_5(state, models, hint_model, objects_only=False):
         gen_object_extraction = "claude-opus-4.5-no-thinking"
         gen_opus = "claude-opus-4.5-thinking-4000"
         gen_transformation = "gpt-5.1-low"
-        unique_solvers = ["claude-opus-4.5-no-thinking"] + ["gpt-5.1-none"] * 3
+        unique_solvers = ["claude-opus-4.5-no-thinking", "gpt-5.1-none"]
     else:
         gen_object_extraction = "gemini-3-high"
         gen_opus = "claude-opus-4.5-thinking-60000"
