@@ -42,7 +42,7 @@ class SolverState:
         
         # Initialize Clients
         openai_key, claude_key, google_keys = get_api_keys()
-        self.http_client = get_http_client(timeout=10.0)
+        self.http_client = get_http_client(timeout=3600.0)
         self.openai_client = OpenAI(api_key=openai_key, http_client=self.http_client) if openai_key else None
         self.anthropic_client = Anthropic(api_key=claude_key, http_client=self.http_client) if claude_key else None
         self.google_keys = google_keys
