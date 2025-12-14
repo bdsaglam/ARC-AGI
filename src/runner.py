@@ -80,7 +80,7 @@ def run_app(
     # Set default judge model if not specified
     if args.judge_model is None:
         if args.solver_testing:
-            args.judge_model = "gemini-3-low"
+            args.judge_model = "gpt-5.1-low"
         else:
             args.judge_model = "gpt-5.2-xhigh"
     
