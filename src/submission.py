@@ -182,15 +182,26 @@ def generate_submission(final_results, submission_dir_path: str, run_timestamp: 
             metadata_template_2 = metadata_template_1.copy()
             metadata_template_2["reasoning_summary"] = reasoning_2
 
+            # Determine explicit correctness state (True, False, or None)
+            c1_correct = None
+            if solutions and len(solutions) > 0 and isinstance(solutions[0], dict):
+                 c1_correct = solutions[0].get("is_correct") # Can be True, False, or None
+            
+            c2_correct = None
+            if solutions and len(solutions) > 1 and isinstance(solutions[1], dict):
+                 c2_correct = solutions[1].get("is_correct")
+            elif solutions and len(solutions) > 0: # If only 1 solution, attempt 2 duplicates attempt 1 logic
+                 c2_correct = c1_correct
+
             task_aggregated_data.append({
                 "attempt_1": {
                     "answer": attempt_1, 
-                    "correct": correct_1,
+                    "correct": c1_correct,
                     "metadata": metadata_template_1
                 },
                 "attempt_2": {
                     "answer": attempt_2, 
-                    "correct": correct_2,
+                    "correct": c2_correct,
                     "metadata": metadata_template_2
                 }
             })
@@ -210,6 +221,7 @@ def generate_submission(final_results, submission_dir_path: str, run_timestamp: 
 
     # Generate results.json
     total_score = 0.0
+    global_score_valid = True
     total_cost = 0.0
     total_attempts = 0
     total_output_tokens = 0
@@ -227,6 +239,7 @@ def generate_submission(final_results, submission_dir_path: str, run_timestamp: 
         num_tests = len(tests)
         
         task_solved_tests = 0
+        task_score_valid = True
         task_cost = 0.0
         task_output_tokens = 0
         task_total_tokens = 0
@@ -235,9 +248,6 @@ def generate_submission(final_results, submission_dir_path: str, run_timestamp: 
         task_empty_attempts = 0
         
         # We need to iterate through all tests for this task
-        # Max index logic was used above: max_idx = max(tests.keys())
-        # But 'tests' dictionary only contains entries for tests that were actually run/returned.
-        # If we ran a subset, we only count those.
         
         for i, preds_raw in tests.items():
             # Unpack preds
@@ -247,33 +257,50 @@ def generate_submission(final_results, submission_dir_path: str, run_timestamp: 
                 solutions, usage_stats = preds_raw
             
             # Determine correctness and empty attempts
-            is_solved = False
+            test_solved = False
+            test_result_known = True # Assume known unless we find None
             
             # Re-extract attempts to check for equality with []
-            # (Logic duplicated from formatted_submission generation for safety/clarity in this block)
             current_attempt_1 = [[0]]
             current_attempt_2 = [[0]]
             
-            if solutions and isinstance(solutions, list):
-                if len(solutions) > 0:
-                    cand1 = solutions[0]
-                    if isinstance(cand1, dict) and "grid" in cand1:
+            # Check Attempt 1
+            a1_correct = None
+            if solutions and isinstance(solutions, list) and len(solutions) > 0:
+                cand1 = solutions[0]
+                if isinstance(cand1, dict):
+                    if "grid" in cand1:
                         current_attempt_1 = cand1["grid"]
-                        if cand1.get("is_correct") is True:
-                            is_solved = True
-                
-                if len(solutions) > 1:
-                    cand2 = solutions[1]
-                    if isinstance(cand2, dict) and "grid" in cand2:
-                        current_attempt_2 = cand2["grid"]
-                        if cand2.get("is_correct") is True:
-                            is_solved = True
-                else:
-                    # If only 1 solution, attempt 2 is copy of attempt 1
-                    current_attempt_2 = current_attempt_1
+                    a1_correct = cand1.get("is_correct") # True, False, None
 
-            if is_solved:
+            # Check Attempt 2
+            a2_correct = None
+            if solutions and isinstance(solutions, list) and len(solutions) > 1:
+                cand2 = solutions[1]
+                if isinstance(cand2, dict):
+                    if "grid" in cand2:
+                        current_attempt_2 = cand2["grid"]
+                    a2_correct = cand2.get("is_correct")
+            elif solutions and isinstance(solutions, list) and len(solutions) > 0:
+                # Duplicate attempt 1 logic
+                current_attempt_2 = current_attempt_1
+                a2_correct = a1_correct
+
+            # Evaluate Test Solved Status
+            # If either is True -> Solved
+            if (a1_correct is True) or (a2_correct is True):
+                test_solved = True
+            
+            # Evaluate Unknown Status
+            # If we haven't solved it, and ANY attempt is None (Unknown), then test result is Unknown
+            if not test_solved:
+                if (a1_correct is None) or (a2_correct is None):
+                    test_result_known = False
+
+            if test_solved:
                 task_solved_tests += 1
+            elif not test_result_known:
+                task_score_valid = False
             
             # Check for empty list []
             if current_attempt_1 == []:
@@ -289,8 +316,14 @@ def generate_submission(final_results, submission_dir_path: str, run_timestamp: 
                 task_total_tokens += usage_stats.get("total_tokens", 0) or 0
                 task_duration += usage_stats.get("total_duration", 0.0) or 0.0
 
-        task_score = (task_solved_tests / num_tests) if num_tests > 0 else 0.0
-        total_score += task_score
+        if task_score_valid:
+            task_score = (task_solved_tests / num_tests) if num_tests > 0 else 0.0
+            if global_score_valid:
+                total_score += task_score
+        else:
+            task_score = None
+            global_score_valid = False
+            
         
         total_cost += task_cost
         total_attempts += task_attempts_count
@@ -315,8 +348,10 @@ def generate_submission(final_results, submission_dir_path: str, run_timestamp: 
     avg_total_tokens_per_task = (total_tokens / num_tasks) if num_tasks > 0 else 0.0
     avg_duration_per_task = (total_duration / num_tasks) if num_tasks > 0 else 0.0
 
+    final_total_score = total_score if global_score_valid else None
+
     results_data = {
-        "score": total_score,
+        "score": final_total_score,
         "total_tasks": num_tasks,
         "total_cost": total_cost,
         "total_attempts": total_attempts,
