@@ -99,18 +99,17 @@ def call_openai_internal(
             if last_failed_job_id:
                 kwargs["previous_response_id"] = last_failed_job_id
 
-            # 1. Submit Job
-            def _submit():
-                try:
-                    return client.responses.create(**kwargs)
-                except Exception as e:
-                    _map_exception(e)
-            
-            job = run_with_retry(lambda: _submit(), task_id=task_id, test_index=test_index, run_timestamp=run_timestamp, model_name=full_model_name)
-            job_id = job.id
-            if verbose:
-                print(f"[BACKGROUND] [{model}] Job submitted. ID: {job_id}")
-
+                    # 1. Submit Job
+                    def _submit():
+                        try:
+                            return client.responses.create(**kwargs)
+                        except Exception as e:
+                            _map_exception(e)
+                    
+                    job = run_with_retry(lambda: _submit(), task_id=task_id, test_index=test_index, run_timestamp=run_timestamp, model_name=full_model_name, timing_tracker=timing_tracker)
+                    job_id = job.id
+                    if verbose:
+                        print(f"[BACKGROUND] [{model}] Job submitted. ID: {job_id}")
             # 2. Poll for Completion
             max_wait_time = 10  # 10 seconds
             start_time = time.time()
