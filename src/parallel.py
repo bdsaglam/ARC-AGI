@@ -176,7 +176,8 @@ def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test
     def debug_run_single_model(queue_time, *args, **kwargs):
         start_wait = time.time() - queue_time
         if start_wait > 0.1:  # Only print if waiting more than 100ms
-            print(f"DEBUG: Task {kwargs.get('run_id', 'unknown')} waited in queue for {start_wait:.2f}s")
+            run_id = args[1] if len(args) > 1 else kwargs.get('run_id', 'unknown')
+            print(f"DEBUG: Task {run_id} waited in queue for {start_wait:.2f}s")
         return run_single_model(*args, **kwargs)
 
     with ThreadPoolExecutor(max_workers=10) as executor:
