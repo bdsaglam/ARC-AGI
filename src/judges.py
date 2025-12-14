@@ -41,9 +41,10 @@ def run_judge(judge_name, prompt, judge_model, openai_client, anthropic_client, 
     if verbose >= 1:
         print(f"\n[pick_solution_v2] Running {judge_name} Judge ({judge_model})...")
     
+    timings = []
     try:
         start_ts = time.perf_counter()
-        response_obj = call_model(openai_client, anthropic_client, google_keys, prompt, judge_model, use_background=use_background)
+        response_obj = call_model(openai_client, anthropic_client, google_keys, prompt, judge_model, use_background=use_background, timing_tracker=timings)
         duration = time.perf_counter() - start_ts
     
         
@@ -69,7 +70,7 @@ def run_judge(judge_name, prompt, judge_model, openai_client, anthropic_client, 
         result_container["input_tokens"] = response_obj.prompt_tokens
         result_container["output_tokens"] = response_obj.completion_tokens
         result_container["cached_tokens"] = response_obj.cached_tokens
-        result_container["timing_breakdown"] = getattr(response_obj, "timing_breakdown", None)
+        result_container["timing_breakdown"] = timings
         
         parsed_json = extract_json(response_obj.text)
         

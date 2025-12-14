@@ -126,6 +126,7 @@ HINT_END
     anthropic_client = Anthropic(api_key=claude_key, http_client=http_client) if claude_key else None
     # google_client instantiation removed as we now pass keys directly
 
+    timings = []
     try:
         start_ts = time.perf_counter()
         response = call_model(
@@ -135,7 +136,8 @@ HINT_END
             prompt=prompt,
             model_arg=hint_model_arg,
             image_path=image_path,
-            verbose=verbose
+            verbose=verbose,
+            timing_tracker=timings
         )
         duration = time.perf_counter() - start_ts
 
@@ -171,7 +173,7 @@ HINT_END
             "input_tokens": response.prompt_tokens,
             "output_tokens": response.completion_tokens,
             "cached_tokens": response.cached_tokens,
-            "timing_breakdown": getattr(response, "timing_breakdown", None),
+            "timing_breakdown": timings,
         }
 
     finally:

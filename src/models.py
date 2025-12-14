@@ -108,9 +108,10 @@ def call_model(
     step_name: str = None,
     use_background: bool = False,
     run_timestamp: str = None,
+    timing_tracker: list[dict] = None,
 ) -> ModelResponse:
     config = parse_model_arg(model_arg)
-    timings = []
+    timings = timing_tracker if timing_tracker is not None else []
 
     if config.provider == "openai":
         response = call_openai_internal(

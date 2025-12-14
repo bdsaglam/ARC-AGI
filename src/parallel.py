@@ -69,7 +69,7 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
     input_tokens = 0
     output_tokens = 0
     cached_tokens = 0
-    timing_breakdown = None
+    timings = []
     try:
         # Acquire rate limit token
         try:
@@ -99,14 +99,14 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             test_index=test_index,
             step_name=step_name,
             use_background=use_background,
-            run_timestamp=run_timestamp
+            run_timestamp=run_timestamp,
+            timing_tracker=timings
         )
         duration = time.perf_counter() - start_ts
         full_response = response.text
         input_tokens = response.prompt_tokens
         output_tokens = response.completion_tokens
         cached_tokens = response.cached_tokens
-        timing_breakdown = response.timing_breakdown
         
         # Handle model fallback (e.g., OpenAI -> Opus)
         if response.model_name and response.model_name != model_name:
@@ -141,13 +141,13 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
                     print(f"{prefix} Result: UNKNOWN (No Ground Truth)")
                     print(grid_text)
             
-            return {"model": model_name, "requested_model": original_model_name, "run_id": run_id, "grid": predicted_grid, "is_correct": is_correct, "cost": cost, "duration": duration, "prompt": prompt, "full_response": full_response, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens, "timing_breakdown": timing_breakdown}
+            return {"model": model_name, "requested_model": original_model_name, "run_id": run_id, "grid": predicted_grid, "is_correct": is_correct, "cost": cost, "duration": duration, "prompt": prompt, "full_response": full_response, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens, "timing_breakdown": timings}
                     
         except ValueError as e:
             if verbose:
                 print(f"{prefix} Result: FAIL (Parse Error: {e})")
                 print(f"\n{prefix} Raw Output:\n{grid_text}")
-            return {"model": model_name, "requested_model": original_model_name, "run_id": run_id, "grid": None, "is_correct": False, "cost": cost, "duration": duration, "prompt": prompt, "full_response": full_response, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens, "timing_breakdown": timing_breakdown}
+            return {"model": model_name, "requested_model": original_model_name, "run_id": run_id, "grid": None, "is_correct": False, "cost": cost, "duration": duration, "prompt": prompt, "full_response": full_response, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens, "timing_breakdown": timings}
 
     except Exception as e:
         # Loud error reporting to bypass buffering
@@ -169,7 +169,7 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
                 test_index=test_index
             )
             
-        return {"model": model_name, "requested_model": original_model_name, "run_id": run_id, "grid": None, "is_correct": False, "cost": cost, "duration": duration, "prompt": prompt, "full_response": str(e), "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens, "timing_breakdown": timing_breakdown}
+        return {"model": model_name, "requested_model": original_model_name, "run_id": run_id, "grid": None, "is_correct": False, "cost": cost, "duration": duration, "prompt": prompt, "full_response": str(e), "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens, "timing_breakdown": timings}
 
 def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, completion_message: str = None, on_task_complete=None, use_background=False):
     all_results = []
