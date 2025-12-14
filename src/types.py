@@ -76,6 +76,7 @@ class ModelResponse:
     completion_tokens: int
     strategy: Optional[str] = None
     model_name: Optional[str] = None
+    timing_breakdown: Optional[list[dict]] = None
 
 @dataclass
 class ModelConfig:

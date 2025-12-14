@@ -30,6 +30,12 @@ def call_openai_internal(
     anthropic_client: Anthropic = None,
 ) -> ModelResponse:
     
+    use_background: bool = False,
+    run_timestamp: str = None,
+    anthropic_client: Anthropic = None,
+    timing_tracker: list[dict] = None,
+) -> ModelResponse:
+    
     model = config.base_model
     reasoning_effort = str(config.config) # Cast to string for safety
     full_model_name = f"{model}-{reasoning_effort}"
@@ -102,7 +108,7 @@ def call_openai_internal(
             except Exception as e:
                 _map_exception(e)
         
-        job = run_with_retry(lambda: _submit(), task_id=task_id, test_index=test_index, run_timestamp=run_timestamp, model_name=full_model_name)
+        job = run_with_retry(lambda: _submit(), task_id=task_id, test_index=test_index, run_timestamp=run_timestamp, model_name=full_model_name, timing_tracker=timing_tracker)
         job_id = job.id
         if verbose:
             print(f"[BACKGROUND] [{model}] Job submitted. ID: {job_id}")
@@ -146,7 +152,8 @@ def call_openai_internal(
                         verbose=verbose,
                         task_id=task_id,
                         test_index=test_index,
-                        run_timestamp=run_timestamp
+                        run_timestamp=run_timestamp,
+                        timing_tracker=timing_tracker
                     )
                     response.model_name = "claude-opus-4.5-thinking-60000"
                     return response
@@ -179,7 +186,8 @@ def call_openai_internal(
                         verbose=verbose,
                         task_id=task_id,
                         test_index=test_index,
-                        run_timestamp=run_timestamp
+                        run_timestamp=run_timestamp,
+                        timing_tracker=timing_tracker
                     )
                     response.model_name = "claude-opus-4.5-no-thinking"
                     return response
@@ -201,7 +209,7 @@ def call_openai_internal(
                 except Exception as e:
                     _map_exception(e)
 
-            job = run_with_retry(lambda: _retrieve(), task_id=task_id, test_index=test_index, run_timestamp=run_timestamp, model_name=full_model_name)
+            job = run_with_retry(lambda: _retrieve(), task_id=task_id, test_index=test_index, run_timestamp=run_timestamp, model_name=full_model_name, timing_tracker=timing_tracker)
 
             if job.status in ("queued", "in_progress"):
                 # Sleep with jitter
@@ -269,7 +277,8 @@ def call_openai_internal(
                              verbose=verbose,
                              task_id=task_id,
                              test_index=test_index,
-                             run_timestamp=run_timestamp
+                             run_timestamp=run_timestamp,
+                             timing_tracker=timing_tracker
                          )
                          response.model_name = "claude-opus-4.5-thinking-60000"
                          return response
@@ -302,7 +311,8 @@ def call_openai_internal(
                              verbose=verbose,
                              task_id=task_id,
                              test_index=test_index,
-                             run_timestamp=run_timestamp
+                             run_timestamp=run_timestamp,
+                             timing_tracker=timing_tracker
                          )
                          response.model_name = "claude-opus-4.5-no-thinking"
                          return response
@@ -375,7 +385,8 @@ def call_openai_internal(
             task_id=task_id,
             test_index=test_index,
             run_timestamp=run_timestamp,
-            model_name=full_model_name
+            model_name=full_model_name,
+            timing_tracker=timing_tracker
         )
 
         text_output = result["text"]
@@ -421,7 +432,8 @@ def call_openai_internal(
                 task_id=task_id,
                 test_index=test_index,
                 run_timestamp=run_timestamp,
-                model_name=full_model_name
+                model_name=full_model_name,
+                timing_tracker=timing_tracker
             )
             
             text_output = ""
@@ -451,7 +463,8 @@ def call_openai_internal(
             task_id=task_id,
             test_index=test_index,
             run_timestamp=run_timestamp,
-            model_name=full_model_name
+            model_name=full_model_name,
+            timing_tracker=timing_tracker
         )
 
     return orchestrate_two_stage(_solve, _explain, prompt, return_strategy, verbose, image_path)

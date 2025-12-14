@@ -23,11 +23,13 @@ def call_anthropic(
     task_id: str = None,
     test_index: int = None,
     run_timestamp: str = None,
+    timing_tracker: list[dict] = None,
 ) -> ModelResponse:
     MODEL_MAX_TOKENS = 64000
     
     model = config.base_model
     cfg_val = config.config
+    full_model_name = f"{model}-{cfg_val}" if cfg_val else model
 
     kwargs = {
         "model": model,
@@ -98,7 +100,8 @@ def call_anthropic(
             task_id=task_id,
             test_index=test_index,
             run_timestamp=run_timestamp,
-            model_name=model
+            model_name=full_model_name,
+            timing_tracker=timing_tracker
         )
         
         text_parts = []
@@ -129,7 +132,8 @@ def call_anthropic(
                 task_id=task_id,
                 test_index=test_index,
                 run_timestamp=run_timestamp,
-                model_name=model
+                model_name=full_model_name,
+                timing_tracker=timing_tracker
             )
             
             text_parts = []

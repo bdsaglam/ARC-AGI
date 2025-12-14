@@ -28,10 +28,12 @@ def call_gemini(
     task_id: str = None,
     test_index: int = None,
     run_timestamp: str = None,
+    timing_tracker: list[dict] = None,
 ) -> ModelResponse:
     
     model = config.base_model
     thinking_level = str(config.config)
+    full_model_name = f"{model}-{thinking_level}"
     
     # Randomly select a key
     if not keys:
@@ -112,7 +114,8 @@ def call_gemini(
             task_id=task_id,
             test_index=test_index,
             run_timestamp=run_timestamp,
-            model_name=model
+            model_name=full_model_name,
+            timing_tracker=timing_tracker
         )
         
         try:
@@ -140,7 +143,8 @@ def call_gemini(
                 task_id=task_id,
                 test_index=test_index,
                 run_timestamp=run_timestamp,
-                model_name=model
+                model_name=full_model_name,
+                timing_tracker=timing_tracker
             )
             
             text_parts = []

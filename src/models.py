@@ -110,9 +110,10 @@ def call_model(
     run_timestamp: str = None,
 ) -> ModelResponse:
     config = parse_model_arg(model_arg)
+    timings = []
 
     if config.provider == "openai":
-        return call_openai_internal(
+        response = call_openai_internal(
             openai_client,
             prompt,
             config,
@@ -125,11 +126,12 @@ def call_model(
             use_background=use_background,
             run_timestamp=run_timestamp,
             anthropic_client=anthropic_client,
+            timing_tracker=timings,
         )
     elif config.provider == "anthropic":
         if not anthropic_client:
             raise RuntimeError("Anthropic client not initialized.")
-        return call_anthropic(
+        response = call_anthropic(
             anthropic_client,
             prompt,
             config,
@@ -139,11 +141,12 @@ def call_model(
             task_id=task_id,
             test_index=test_index,
             run_timestamp=run_timestamp,
+            timing_tracker=timings,
         )
     elif config.provider == "google":
         if not google_keys:
             raise RuntimeError("Google keys not initialized.")
-        return call_gemini(
+        response = call_gemini(
             google_keys,
             prompt,
             config,
@@ -153,6 +156,12 @@ def call_model(
             task_id=task_id,
             test_index=test_index,
             run_timestamp=run_timestamp,
+            timing_tracker=timings,
         )
-
-    raise ValueError(f"Unknown provider {config.provider}")
+    else:
+        raise ValueError(f"Unknown provider {config.provider}")
+        
+    if response:
+        response.timing_breakdown = timings
+        
+    return response

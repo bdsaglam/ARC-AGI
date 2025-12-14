@@ -69,6 +69,7 @@ def run_judge(judge_name, prompt, judge_model, openai_client, anthropic_client, 
         result_container["input_tokens"] = response_obj.prompt_tokens
         result_container["output_tokens"] = response_obj.completion_tokens
         result_container["cached_tokens"] = response_obj.cached_tokens
+        result_container["timing_breakdown"] = getattr(response_obj, "timing_breakdown", None)
         
         parsed_json = extract_json(response_obj.text)
         

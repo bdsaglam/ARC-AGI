@@ -171,6 +171,7 @@ HINT_END
             "input_tokens": response.prompt_tokens,
             "output_tokens": response.completion_tokens,
             "cached_tokens": response.cached_tokens,
+            "timing_breakdown": getattr(response, "timing_breakdown", None),
         }
 
     finally:
