@@ -12,7 +12,7 @@ from src.types import SUPPORTED_MODELS, ORDERED_MODELS
 PROVIDER_RATE_LIMITS = {
     "openai": {"rate": 15, "period": 60},
     "anthropic": {"rate": 15, "period": 60},
-    "google": {"rate": 8, "period": 60}
+    "google": {"rate": 15, "period": 60}
 }
 
 class KeepAliveTransport(httpx.HTTPTransport):
