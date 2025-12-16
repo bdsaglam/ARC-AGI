@@ -26,7 +26,7 @@ def main():
     parser.add_argument("--task-test-selection", help="Comma-separated list of TaskID:TestIndex pairs (e.g. 'de809cff:1,faa9f03d:1').")
     parser.add_argument("--test", type=int, default=1, help="Test case index (1-based, default: 1). Ignored if --task-directory is used.")
     parser.add_argument("--task-workers", type=int, default=60, help="Number of tasks to run in parallel (default: 60). CAUTION: Divides global rate limits by this factor.")
-    parser.add_argument("--startup-delay", type=float, default=60.0, help="Delay in seconds between starting parallel tasks in batch mode to avoid rate limits (default: 60.0).")
+    parser.add_argument("--startup-delay", type=float, default=90.0, help="Delay in seconds between starting parallel tasks in batch mode to avoid rate limits (default: 90.0).")
     parser.add_argument("--task-limit", type=int, default=None, help="Limit the number of tasks to run (useful for testing batch mode).")
     parser.add_argument("--objects", action="store_true", help="Run a 3-step pipeline: Extraction -> Transformation -> Solution.")
     parser.add_argument("--step-5-only", action="store_true", help="Run only Step 5 (Full Search) of the solver.")
