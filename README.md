@@ -19,64 +19,41 @@ python run.py --task-directory evaluation --task-limit 1
 You should see something like this, and it should complete in a few minutes only
 
 ```
+Solver testing mode activated.
+Judge model: gpt-5.1-low
+
+Limiting execution to first 1 tasks.
 Found 1 task files. Total test cases: 1
-Starting batch execution with 20 parallel task workers...
+Starting batch execution with 60 parallel task workers...
 
-  Task         Status       Step                      Outcome   Duration
- ────────────────────────────────────────────────────────────────────────
-  2ba387bc:1   🟡 RUNNING   Step 1 (Shallow search)                04:03
+Legend: ⚡ Running   ⏳ Queued   ✅ Done
+
+| Status        | Task:Test  | Step  | Phase           | Time   | Message
+|---------------|------------|-------|-----------------|--------|------------------------------
+|  ⚡1 ⏳0 ✅0  | 0934a4d8:1 |  1/5  | Shallow search  |   0.0s | Broad search: 2 left
+|  ⚡1 ⏳0 ✅0  | 0934a4d8:1 |  1/5  | Shallow search  |  36.7s | Broad search: 1 left
+|  ⚡1 ⏳0 ✅0  | 0934a4d8:1 |  1/5  | Shallow search  |  49.3s | Broad search: 0 left
+|  ⚡1 ⏳0 ✅0  | 0934a4d8:1 |  2/5  | Eval            |  49.3s | No solution, exiting (forced)
+|  ⚡1 ⏳0 ✅0  | 0934a4d8:1 |  DONE | Finished        |  93.1s | FAIL ($0.1587)
+Submission file saved to: submissions/submission.json
+Results file saved to: submissions/results.json
 ```
 
-This task should complete in a few minutes, and since we have specified --answers-directory in the command line the script will also correct the answer. When it finishes, it should look something like this:
-
-```
-  Task         Status         Step       Outcome   Duration
- ───────────────────────────────────────────────────────────
-  2ba387bc:1   🟢 COMPLETED   Finished   PASS         06:02
-
-Submission file saved to: submissions/2025-11-30_23-55-50_submission.json
-```
-
-Do note that --answers-directory is optional. All answers are stores in submissions/ in one big .json file as well as individual answer files.
-
-
-To run the full eval 2 data set just run the command `python run.py --task-directory tasks_eval2_no_answers/`
-
-... or if you want the script to also correct the answers, then run `python run.py --task-directory tasks_eval2_no_answers/ --answers-directory answers_only_eval2/`
-
-By default, the script has 20 --task-workers, and the output will look something like this:
-```
-  Task         Status         Step                       Outcome   Duration
- ───────────────────────────────────────────────────────────────────────────
-  16de56c4:1   🟡 RUNNING     Step 5 (Full search)                    43:37
-  16de56c4:2   🟡 RUNNING     Step 5 (Full search)                    43:37
-  20a9e565:1   🟡 RUNNING     Step 5 (Full search)                    43:37
-  20a9e565:2   🟡 RUNNING     Step 5 (Full search)                    43:37
-  247ef758:1   🟡 RUNNING     Step 5 (Full search)                    43:37
-  247ef758:2   🟡 RUNNING     Step 5 (Full search)                    43:37
-  332f06d7:1   🟡 RUNNING     Step 5 (Full search)                    43:37
-  36a08778:1   🟡 RUNNING     Step 5 (Full search)                    43:37
-  36a08778:2   🟡 RUNNING     Step 3 (Extended search)                43:37
-  3dc255db:1   🟡 RUNNING     Step 5 (Full search)                    43:37
-  581f7754:1   🟡 RUNNING     Step 5 (Full search)                    43:37
-  581f7754:2   🟡 RUNNING     Step 3 (Extended search)                43:37
-  67e490f4:1   🟡 RUNNING     Step 5 (Full search)                    43:37
-  71e489b6:1   🟡 RUNNING     Step 5 (Full search)                    43:37
-  71e489b6:2   🟡 RUNNING     Step 5 (Full search)                    43:37
-  7b3084d4:1   🟡 RUNNING     Step 5 (Full search)                    43:37
-  80a900e0:1   🟡 RUNNING     Step 5 (Full search)                    43:37
-  898e7135:1   🟡 RUNNING     Step 5 (Full search)                    43:37
-  8b9c3697:1   🟡 RUNNING     Step 1 (Shallow search)                 06:12
-  8e5c0c38:1   🟡 RUNNING     Step 1 (Shallow search)                 00:55
-  409aa875:1   🟢 COMPLETED   Finished                   PASS         42:42
-  5961cc34:1   🟢 COMPLETED   Finished                   PASS         37:25
-```
 
 # Overview
 
 ## Algorithm
 
-This is mainly an LLM based algorithm across the major frontier models. It does however implement some funky stuff like multimodal data, hint extraction, deeper analysis through the prompt, as well as some degree of smarter searching through the solutions.
+Four key solvers:
+* Multimodal: Generate an image of problem and use as part of the prompt to solve the problem
+* Hint: Extract key hints about how to solve the problem separately, and then supply hints to key models to guide them in the right direction
+* Three step search: In first step, label all objects in the input/output (as opposed to a regular grid representation). In a second step, label all potential transformations involved in the input-output pairing. In third steps, use the extracted objects and the transformations to attempt at finding a solution
+* Deep-search: Use specialized prompt to ensure triggering of maximum depth of search
+
+All solvers output a full reasoning trace as part of their solution. Then all solvers are "scored" by two judges:
+* Logic Judge: Does the reasoning produce the claimed result
+* Consistency Judge: Is the reasoning coherent and consistent
+Based on the judges assessment all candidates are scored, and a decision is made on whether further "search" is needed or whether a likely solution has been reached.
 
 I've done a bunch of analysis to come to this algorithm that may be informative to others trying to solve ARC AGI. Please see below for some of that analysis, or just hook me up on the ARC AGI discord channel.
 
