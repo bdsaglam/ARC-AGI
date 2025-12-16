@@ -1,3 +1,4 @@
+import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -174,17 +175,22 @@ def run_step_5(state, models, hint_model, objects_only=False):
             ]
             
         for future in as_completed(futures):
-            step_name, results, extra_log = future.result()
-            
-            # Handle logging
-            if step_name.startswith("objects_pipeline_"):
-                # pipeline returns (name, results, log)
-                state.process_results(results, step_5_log["objects_pipeline"])
-                # extra_log here is the pipeline extraction/transform details
-                step_5_log["objects_pipeline"][step_name.replace("objects_pipeline_", "")] = extra_log
-            else:
-                state.process_results(results, step_5_log[step_name])
-                if step_name == "generate-hint" and extra_log:
-                     step_5_log["generate-hint"]["hint_generation"] = extra_log
+            try:
+                step_name, results, extra_log = future.result()
+                
+                # Handle logging
+                if step_name.startswith("objects_pipeline_"):
+                    # pipeline returns (name, results, log)
+                    state.process_results(results, step_5_log["objects_pipeline"])
+                    # extra_log here is the pipeline extraction/transform details
+                    step_5_log["objects_pipeline"][step_name.replace("objects_pipeline_", "")] = extra_log
+                else:
+                    state.process_results(results, step_5_log[step_name])
+                    if step_name == "generate-hint" and extra_log:
+                         step_5_log["generate-hint"]["hint_generation"] = extra_log
+            except Exception as e:
+                import traceback
+                print(f"ERROR: A Step 5 parallel substep failed: {e}", file=sys.stderr)
+                traceback.print_exc()
 
     state.log_step("step_5", step_5_log)
