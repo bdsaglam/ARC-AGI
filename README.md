@@ -57,21 +57,19 @@ Based on the judges assessment all candidates are scored, and a decision is made
 
 I've done a bunch of analysis to come to this algorithm that may be informative to others trying to solve ARC AGI. Please see below for some of that analysis, or just hook me up on the ARC AGI discord channel.
 
-## Current performance
+## Current performance (Dec 15 2025)
 
-The performance is: 70.7% on arc agi 2 eval dataset
+The performance is: 70.7% on [arc agi 2 eval dataset](https://github.com/arcprize/ARC-AGI-2/tree/main/data/evaluation)
 
 Full results here: https://www.kaggle.com/code/johanland/johan-land-solver-v6-public/output?scriptVersionId=286318109&select=submissions.tgz
 
-The latest additions are:
-1. An object / transformation solver: First step to identify all objects in the grids, second step to identify the most obvious transformations, third step to solve based on these as hints. Helps abstract away on noisy problems, e.g. https://arcprize.org/play?task=dbff022c
-2. Multi-agent ("ARC LOGIC AUDITOR" and "ARC Solution Auditor") answer judges. Helps find solutions in cases where they are hard to find, and many of the models make "obvious but identical mistakes" giving clusters around false solutions.
 
 ## Historical performance
 
 I did a run on Dec 1 on the Eval 2 dataset which yielded a 50.3% solved problems (each sub task measured independently). 
 
 Full results here: https://github.com/beetree/ARC-AGI/blob/main/docs/RESULTS.md
+
 
 ## Next steps
 
@@ -91,7 +89,7 @@ The next improvements that I'm hoping to do to my algorithm are:
 - ~~Train a separate model to predict the likelihood of a solution actually being correct, and use this to guide the search. Right now there's just heuristics around this. Need to be conscious not to overfit while doing this.~~
 
 Also some small fixes needed:
-- Make hints speak in terms of color-numbers (e.g. #7)rather than explicit colors (e.g. orange)
+- ~~Make hints speak in terms of color-numbers (e.g. #7) rather than explicit colors (e.g. orange)~~
 
 ## Historical analysis
 
