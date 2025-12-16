@@ -11,7 +11,10 @@ pip install -r requirements.txt
 cp config/api_keys.env.example config/api_keys.env
 # Add your keys
 set -a && source config/api_keys.env && set +a
-python run.py --task-directory tasks_no_answers_single_task/ --answers-directory answers_only_single_task/
+git clone https://github.com/arcprize/ARC-AGI-2.git
+mv ARC-AGI-2/data/evaluation .
+rm -rf ARC-AGI-2
+python run.py --task-directory evaluation --task-limit 1
 ```
 You should see something like this, and it should complete in a few minutes only
 
