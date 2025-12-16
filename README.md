@@ -96,11 +96,11 @@ Full results here: https://github.com/beetree/ARC-AGI/blob/main/docs/RESULTS.md
 ## Next steps
 
 The next improvements that I'm hoping to do to my algorithm are:
-- Use the reasoning traces in better choosing and refining the solutions
+- ~~Use the reasoning traces in better choosing and refining the solutions~~
 - I suppose I should implement an explicit python based solver too. I don't like the idea of doing the search in "python space" (seems inefficient) but I can see it being very powerful in verifying solutions, or even "implementing the best of solutions"
 - In my current algorithm, it seems that the multi modal part of the solver is only marginally adding to the performance, but I want to experiment a bit more with nano banana pro, imagen, sora, veo, etc. I think there is a fundamentally additative form of insights that come from these models
 - Grok doesn't seem to be particularly performant, but I guess I should try it out too. I'm more curious about the chinese open source models. They may add completely other angles that could be highly complimentary.
-- Test anthropic-beta: effort-2025-11-24, with reasoning high and maybe temperatur?
+- Test anthropic-beta: effort-2025-11-24, with reasoning high and maybe temperature?
 - Try gemini 3 with 2.0 temperature
 - Should solve all tests within multi-test tasks in one go with an even deeper search. It'll help validate the answers, and probably also to extend to the harder test cases. For example: https://arcprize.org/play?task=d35bdbdc
 - ~~Implement a sparse grid representation as part of the search for solutions~~
