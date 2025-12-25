@@ -3,7 +3,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.logging import PrefixedStdout
-from src.tasks import build_prompt
+from src.tasks import build_prompt, build_prompt_codegen
 from src.image_generation import generate_and_save_image
 from src.hint_generation import generate_hint
 from src.parallel import run_models_in_parallel
@@ -12,13 +12,37 @@ from src.solver.pipelines import run_objects_pipeline_variant
 
 def run_step_1(state, models):
     state.set_status(step=1, phase="Shallow search")
-    print(f"Broad search: {len(models)} left")
+    codegen_models = ["gpt-5.2-low"]
+    # total_models = len(models) + len(codegen_models)
+    total_models = len(codegen_models)
+    
+    print(f"Broad search: {total_models} left")
     step_1_log = {}
     if state.verbose >= 1:
-        print(f"Running {len(models)} models...")
-    prompt_step1 = build_prompt(state.task.train, state.test_example)
-    results_step1 = run_models_in_parallel(models, state.run_id_counts, "step_1", prompt_step1, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, completion_message="Broad search", use_background=state.openai_background)
-    state.process_results(results_step1, step_1_log)
+        print(f"Running {total_models} models...")
+    
+    # prompt_step1 = build_prompt(state.task.train, state.test_example)
+    prompt_codegen = build_prompt_codegen(state.task.train)
+
+    # print("\n" + "="*50, file=sys.stderr)
+    # print("DEBUG: STANDARD PROMPT (prompt_step1):", file=sys.stderr)
+    # print(prompt_step1, file=sys.stderr)
+    # print("="*50 + "\n", file=sys.stderr)
+
+    print("\n" + "="*50, file=sys.stderr)
+    print("DEBUG: CODEGEN PROMPT (prompt_codegen):", file=sys.stderr)
+    print(prompt_codegen, file=sys.stderr)
+    print("="*50 + "\n", file=sys.stderr)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        # f1 = executor.submit(run_models_in_parallel, models, state.run_id_counts, "step_1", prompt_step1, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, completion_message="Broad search", use_background=state.openai_background)
+        f2 = executor.submit(run_models_in_parallel, codegen_models, state.run_id_counts, "step_1_codegen", prompt_codegen, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, completion_message="Broad search (codegen)", use_background=state.openai_background, execution_mode="code", train_examples=state.task.train)
+        
+        results_step1 = []
+        results_codegen = f2.result()
+    
+    all_results = results_step1 + results_codegen
+    state.process_results(all_results, step_1_log)
     state.log_step("step_1", step_1_log)
 
 def run_step_3(state, models):

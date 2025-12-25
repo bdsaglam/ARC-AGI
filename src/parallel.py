@@ -3,6 +3,7 @@ import re
 import sys
 import os
 import traceback
+import copy
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import httpx
@@ -56,7 +57,106 @@ def extract_tag_content(text: str, tag_name: str) -> str | None:
         return match.group(1).strip()
     return None
 
-def run_single_model(model_name, run_id, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, step_name=None, use_background=False):
+def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples: list = None) -> tuple[list | None, dict | None]:
+    """
+    Extracts Python code from LLM response, executes it, calls solver(), 
+    and returns the predicted grid.
+    
+    If train_examples is provided, it verifies the solver against all training pairs first.
+    Returns: (predicted_grid, verification_log)
+    """
+    verification_log = {"train_results": [], "status": "UNKNOWN"}
+    
+    code = llm_code
+    # Try to extract from markdown block
+    pattern = r"```python(.*?)```"
+    match = re.search(pattern, llm_code, re.DOTALL)
+    if match:
+        code = match.group(1).strip()
+    
+    local_scope = {}
+    try:
+        # Execute the code definition
+        exec(code, {}, local_scope)
+    except Exception as e:
+        verification_log["status"] = "FAIL_DEFINE"
+        verification_log["error"] = str(e)
+        return None, verification_log
+        
+    if "solver" not in local_scope:
+        verification_log["status"] = "FAIL_NO_SOLVER"
+        return None, verification_log
+        
+    solver_func = local_scope["solver"]
+    if not callable(solver_func):
+        verification_log["status"] = "FAIL_SOLVER_NOT_CALLABLE"
+        return None, verification_log
+
+    # Verification Step
+    if train_examples:
+        for i, ex in enumerate(train_examples):
+            entry = {
+                "index": i, 
+                "status": "UNKNOWN",
+                # Store as plain lists/data for JSON logging
+                "input": ex.input, 
+                "expected": ex.output,
+                "actual": None
+            }
+            try:
+                # Deepcopy input to prevent mutation side-effects affecting subsequent runs
+                input_copy = copy.deepcopy(ex.input)
+                
+                print(f"DEBUG: Verifying Train Example {i+1}...", file=sys.stderr)
+                # Run solver on training input
+                res = solver_func(input_copy)
+                entry["actual"] = res
+                
+                # Check against training output
+                if res != ex.output:
+                    print(f"DEBUG: Train Example {i+1} FAILED. Expected {ex.output}, got {res}", file=sys.stderr)
+                    entry["status"] = "FAIL"
+                    verification_log["train_results"].append(entry)
+                    verification_log["status"] = "FAIL_VERIFICATION"
+                    verification_log["failed_example_index"] = i
+                    return None, verification_log
+                else:
+                    print(f"DEBUG: Train Example {i+1} PASSED", file=sys.stderr)
+                    entry["status"] = "PASS"
+                    verification_log["train_results"].append(entry)
+                    
+            except Exception as e:
+                print(f"DEBUG: Solver crashed on Train Example {i+1}: {e}", file=sys.stderr)
+                entry["status"] = "CRASH"
+                entry["error"] = str(e)
+                verification_log["train_results"].append(entry)
+                verification_log["status"] = "FAIL_CRASH"
+                verification_log["failed_example_index"] = i
+                return None, verification_log
+        
+        verification_log["status"] = "PASS"
+        
+    try:
+        # Run the solver against the test input
+        # Note: test_input_grid is already a list of lists (Python object)
+        result = solver_func(test_input_grid)
+        
+        # Basic validation: must be list of lists
+        if isinstance(result, list):
+             # Ensure it's not a flat list? Or just robustly handle
+             if len(result) > 0 and isinstance(result[0], list):
+                 return result, verification_log
+             # Handle empty grid case or other variations if needed
+             if len(result) == 0:
+                 return result, verification_log
+        
+        verification_log["test_run_error"] = "Result validation failed (not list of lists)"
+        return None, verification_log
+    except Exception as e:
+        verification_log["test_run_error"] = f"Test execution failed: {str(e)}"
+        return None, verification_log
+
+def run_single_model(model_name, run_id, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, step_name=None, use_background=False, execution_mode="grid", train_examples=None):
     original_model_name = model_name
     prefix = f"[{run_id}]"
     if verbose:
@@ -128,9 +228,34 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             print(f"{prefix} Response received.")
 
         grid_text = response.text
+
+        if execution_mode == "code":
+            print(f"\n{prefix} LLM Response (Codegen):\n{grid_text}\n", file=sys.stderr)
+
+        predicted_grid = None
+        verification_details = None
         
+        if execution_mode == "code":
+            # CODE execution path
+            try:
+                # test_example.input is a list of lists
+                predicted_grid, verification_details = extract_and_run_solver(grid_text, test_example.input, train_examples=train_examples)
+                print(f"{prefix} Execution Result: {predicted_grid}", file=sys.stderr)
+                # If solver failed, predicted_grid is None
+            except Exception as e:
+                if verbose:
+                    print(f"{prefix} Code Execution Failed: {e}")
+        else:
+            # GRID parsing path (Standard)
+            try:
+                predicted_grid = parse_grid_from_text(grid_text)
+            except ValueError as e:
+                if verbose:
+                    print(f"{prefix} Result: FAIL (Parse Error: {e})")
+                    print(f"\n{prefix} Raw Output:\n{grid_text}")
+        
+        # Verification
         try:
-            predicted_grid = parse_grid_from_text(grid_text)
             is_correct = verify_prediction(predicted_grid, test_example.output)
             
             if verbose:
@@ -138,17 +263,54 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
                     print(f"{prefix} Result: PASS")
                 elif is_correct is False:
                     print(f"{prefix} Result: FAIL")
+                    if execution_mode == "code":
+                        print(f"\n{prefix} Generated Code:\n{grid_text}", file=sys.stderr)
+                    else:
+                        print(grid_text)
                 else:
                     print(f"{prefix} Result: UNKNOWN (No Ground Truth)")
-                    print(grid_text)
+                    
+                    if execution_mode == "code":
+                        print(f"\n{prefix} Generated Code:\n{grid_text}", file=sys.stderr)
+                    else:
+                        print(grid_text)
             
-            return {"model": model_name, "requested_model": original_model_name, "run_id": run_id, "grid": predicted_grid, "is_correct": is_correct, "cost": cost, "duration": duration, "prompt": prompt, "full_response": full_response, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens, "timing_breakdown": timings}
+            return {
+                "model": model_name, 
+                "requested_model": original_model_name, 
+                "run_id": run_id, 
+                "grid": predicted_grid, 
+                "is_correct": is_correct, 
+                "cost": cost, 
+                "duration": duration, 
+                "prompt": prompt, 
+                "full_response": full_response, 
+                "input_tokens": input_tokens, 
+                "output_tokens": output_tokens, 
+                "cached_tokens": cached_tokens, 
+                "timing_breakdown": timings,
+                "verification_details": verification_details
+            }
                     
         except ValueError as e:
-            if verbose:
-                print(f"{prefix} Result: FAIL (Parse Error: {e})")
-                print(f"\n{prefix} Raw Output:\n{grid_text}")
-            return {"model": model_name, "requested_model": original_model_name, "run_id": run_id, "grid": None, "is_correct": False, "cost": cost, "duration": duration, "prompt": prompt, "full_response": full_response, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens, "timing_breakdown": timings}
+            # Should be handled above for parse errors, but verification might fail too
+             return {
+                 "model": model_name, 
+                 "requested_model": original_model_name, 
+                 "run_id": run_id, 
+                 "grid": None, 
+                 "is_correct": False, 
+                 "cost": cost, 
+                 "duration": duration, 
+                 "prompt": prompt, 
+                 "full_response": full_response, 
+                 "input_tokens": input_tokens, 
+                 "output_tokens": output_tokens, 
+                 "cached_tokens": cached_tokens, 
+                 "timing_breakdown": timings,
+                 "verification_details": verification_details
+             }
+
 
     except Exception as e:
         # Loud error reporting to bypass buffering
@@ -172,7 +334,7 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             
         return {"model": model_name, "requested_model": original_model_name, "run_id": run_id, "grid": None, "is_correct": False, "cost": cost, "duration": duration, "prompt": prompt, "full_response": str(e), "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_tokens": cached_tokens, "timing_breakdown": timings}
 
-def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, completion_message: str = None, on_task_complete=None, use_background=False):
+def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, completion_message: str = None, on_task_complete=None, use_background=False, execution_mode="grid", train_examples=None):
     all_results = []
     
     # Wrapper for debugging queue times
@@ -197,7 +359,7 @@ def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test
             executor.submit(
                 debug_run_single_model,
                 time.time(), # Capture queue time
-                run["name"], run["run_id"], prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path, run_timestamp, task_id, test_index, step_name, use_background
+                run["name"], run["run_id"], prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path, run_timestamp, task_id, test_index, step_name, use_background, execution_mode, train_examples
             ): run["run_id"]
             for run in run_list
         }

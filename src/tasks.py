@@ -123,15 +123,22 @@ def build_prompt(
     image_path: str = None,
     trigger_deep_thinking: bool = False,
     objects_insertion: str = None,
+    custom_instruction: str = None,
 ) -> str:
-    lines = [
-        "You are solving an ARC (Abstraction and Reasoning Corpus) task.",
-    ]
-    lines.append("Each grid cell is an integer 0-9 representing a color.")
-    lines.append(
-        "Use the solved examples to infer the transformation and apply it to the test input."
-    )
-    lines.append("")
+    lines = []
+    if custom_instruction:
+        lines.append(custom_instruction)
+        lines.append("")
+    else:
+        lines = [
+            "You are solving an ARC (Abstraction and Reasoning Corpus) task.",
+        ]
+        lines.append("Each grid cell is an integer 0-9 representing a color.")
+        lines.append(
+            "Use the solved examples to infer the transformation and apply it to the test input."
+        )
+        lines.append("")
+
     lines.append("Solved examples:")
     for idx, ex in enumerate(train_examples, start=1):
         lines.append(f"Example {idx}:")
@@ -180,4 +187,22 @@ def build_prompt(
     else:
         lines.append("Respond with an explanation of your thinking that is detailed enough that someone can reconstruct your solution. Afterwards, you MUST also respond with the completed output grid.")
 
+    return "\n".join(lines)
+
+def build_prompt_codegen(train_examples: List[Example]) -> str:
+    lines = [
+        "Below is an ARC AGI task. You're given the training input/output pairs in python. Your task is to write a python function solver(input) that returns the output grid. The solver() function must solve all the input/output pairs",
+        ""
+    ]
+    
+    lines.append("Solved examples:")
+    for idx, ex in enumerate(train_examples, start=1):
+        lines.append(f"Example {idx}:")
+        lines.append("input:")
+        lines.append(str(ex.input))
+        lines.append("output:")
+        lines.append(str(ex.output))
+        lines.append("")
+
+    lines.append("Only output the python code for the solver() function")
     return "\n".join(lines)
