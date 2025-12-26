@@ -1,5 +1,7 @@
 # Conclusion
 
+Adding test input does improve performance, and as expected it also makes some problems solvable that previously weren't solvable.
+
 # Premis
 
 The problem with generalization is real when it comes to a codegen solver. Effectively, the generated code correctly solves all the training data, but then a new concept is introduced in the test data and if the solver code doesn't generalize to this new concept it fails.
@@ -298,5 +300,29 @@ Now let's compare v1b and v2b (using these problems: `247ef758:1,31f7f899:1,7c66
 - V2B: 1818057f,7c66cb00,247ef758
 - V1B: 1818057f,31f7f899,bf45cf4b,b0039139
 - V2B: 1818057f,247ef758
-- 
+- V1B: 1818057f,38007db0,136b0064
+- V2B: 1818057f,247ef758,b0039139
+- V1B: 1818057f,1ae2feb7
+- V2B: 1818057f
+- V1B: 1ae2feb7,1818057f,38007db0,31f7f899,247ef758
+- V2B: 1818057f
+- V1B: 1818057f,247ef758,7c66cb00
+- V2B: 1818057f,38007db0,1ae2feb7,bf45cf4b,7c66cb00
+- V1B: 1818057f,247ef758,bf45cf4b
+- V2B: NA
+- V1B: 1818057f,1ae2feb7,16de56c4
+- V2B: 1818057f,bf45cf4b,247ef758,7c66cb00
+- V1B: 1818057f,31f7f899,136b0064
+- V2B: 1818057f,38007db0,247ef758
+- V1B: 1818057f,247ef758
+- V2B: 1818057f
+- V1B: 1818057f,247ef758,b0039139
+- V2B: 1818057f
+- V1B: 1818057f,bf45cf4b
+- V2B: 1818057f,bf45cf4b
 
+Data:
+- V1B solved 36 and V2B solved 26
+- There are some problems that only V1B solved (136b0064, 16de56c4, 31f7f899)
+
+Overall, V1B outperforms V2B.
