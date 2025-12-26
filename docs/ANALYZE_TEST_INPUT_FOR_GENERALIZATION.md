@@ -6,7 +6,7 @@ The problem with generalization is real when it comes to a codegen solver. Effec
 
 One approach for solving this is to generate more training data. However, this is a highly fragile approach (See other document). Another approach is to expose the input data when generating the solver and ask it to ensure that its approach generalizes also to these input cases.
 
-# Prompt
+# Prompts
 
 The original prompt (without test data), AKA V2:
 
@@ -252,3 +252,51 @@ input:
 
 Only output the python code for the solver() function
 ```
+
+
+# Performance
+
+Below are results from a few runs using gpt-5.2-low on the 10 easiests problems:
+- V1: 2 PASS (247ef758, 36a08778)
+- V1B: 1 PASS (136b0064)
+- V1: 0 PASS
+- V1B: 1 PASS (31f7f899)
+- V1: 1 PASS (7c66cb00)
+- V1B: 1 PASS (136b0064)
+- V1: 0 PASS
+- V1B: 0 PASS
+- V1: 1 PASS (247ef758)
+- V1B: 1 PASS (247ef758)
+- V1: 0 PASS
+- V1B: 0 PASS
+- V1: 0 PASS
+- V1B: 1 PASS (7c66cb00)
+- V1: 1 PASS (247ef758)
+- V1B: 2 PASS (247ef758, 16de56c4)
+- V1: 2 PASS (247ef758, 16de56c4)
+- V1B: 1 PASS (247ef758)
+- V1: 2 PASS (136b0064, 7c66cb00)
+- V1B: 0 PASS
+- V1: 1 PASS (247ef758)
+- V1B: 3 PASS (247ef758, 31f7f899, 36a08778)
+- V1: 2 PASS (247ef758, 7c66cb00)
+- V1B: 0 PASS
+- V1: 2 PASS (16de56c4, 247ef758)
+- V1B: 1 PASS (247ef758)
+- V1: 1 PASS (247ef758)
+- V1B: 3 PASS (247ef758, 31f7f899, 7c66cb00)
+
+Data:
+- Both V1 and V1B solved 15 problems.
+- 31f7f899 was only solved by V1B
+
+In aggregate they may seem to perform the same, but V1B is actually outperforming. For example, problem 31f7f899 is only solved by V1B likely because V1 is missing the concept of the lines being of arbitrary length (only introduced in the test example). Hence, the adding of the test examples DOES add to the performance.
+
+
+Now let's compare v1b and v2b (using these problems: `247ef758:1,31f7f899:1,7c66cb00:1,136b0064:1,16de56c4:1,36a08778:1,1818057f:1,38007db0:2,bf45cf4b:1,b0039139:2,1ae2feb7:1,7ed72f31:2,b5ca7ac4:1`):
+- V1B: 1818057f,bf45cf4b,7c66cb00
+- V2B: 1818057f,7c66cb00,247ef758
+- V1B: 1818057f,31f7f899,bf45cf4b,b0039139
+- V2B: 1818057f,247ef758
+- 
+
