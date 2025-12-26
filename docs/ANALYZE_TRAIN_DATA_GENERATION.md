@@ -2,6 +2,8 @@
 
 Generated training data should only be used to assess confidence in the generated solver code. It should not be used to actually develop the solver.
 
+In particular, when having multiple solvers, the solver that solves the most of the generated examples should be chosen as it is strictly (?) better.
+
 # Strategies
 
 When doing codegen the generalizability of the code is very important to measure, else we will have too high belief in code that solves all test examples and we will fail to see it not generalizing to test cases that may introduce new mechanics.
@@ -25,5 +27,15 @@ Even color renaming, which seems harmless at first sight, brakes some problems. 
 
 I believe there are no completely safe ways to generate training data without knowing the solution transform. That said, generating training data can be helpful in building *some* confidence in the solver. If it also solves generated training data it is more likely to generalize, but even if failing the generated training data it still *can* be right.
 
+# Can generated training data help determine accuracy if having multiple solvers?
 
+Assume a case where you have multiple solvers that all solve the training data and generate the same answer to the test data. What will then the conclusion be if these solvers fail/succeed on different generated training data?
+
+If they perform differently on the generated data it suggests that there exists a more generalizable solution, and only some of the solvers have figured this out. But, this more generalizable solution is not necessary to solve the problem.
+
+Conclusion: No information obtainable from them performing differently
+
+# If having multiple solvers generating different solutions, can generated data help in choosing the best one?
+
+Yes, whichever solver solves the most of the generated data will should be chosen. Will it be more likely to be right? Or strickly be better? I think it'll strictly be better.
 
