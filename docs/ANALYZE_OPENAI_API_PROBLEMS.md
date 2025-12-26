@@ -92,9 +92,50 @@ Here are the potential transformation hypotheses and strategies identified by th
 - Confirm header pattern by checking whether first and last rows match (or are near-identical) on the right side; if not identical, prioritize using the top row as the header reference.
 
 **Your Task:**
-1. Mentally evaluate these hypotheses against the examples to determine which one is strictly correct.
-2. If the Analyst's plan is flawed, you are authorized to derive the correct logic yourself.
-3. Implement the correct logic into a Python function named `solver(input)`.
-4. Return only the Python code.
-
+1. Your task is to write a python function solver(input) that returns the output grid. The solver() function must solve all the input/output pairs. You're also given some input-only training data to help you ensure your solution is generalizable.
+2. Implement the correct logic into a Python function named `solver(input)`.
+3. Return only the Python code.
 ```
+
+The idea here is to split the burden between the two prompts. We want much reasoning to happen in the first prompt, but not all reasoning. I believe the cut above is a good first attempt at splitting this reasonably well.
+
+Let's start off by measuring the relative performance. We already have the following V1B performance (gpt-5.2-low, using problems 247ef758:1,31f7f899:1,7c66cb00:1,136b0064:1,16de56c4:1,36a08778:1,1818057f:1,38007db0:2,bf45cf4b:1,b0039139:2,1ae2feb7:1,7ed72f31:2,b5ca7ac4:1):
+- V1B: 1818057f,bf45cf4b,7c66cb00
+- V1B: 1818057f,31f7f899,bf45cf4b,b0039139
+- V1B: 1818057f,38007db0,136b0064
+- V1B: 1818057f,1ae2feb7
+- V1B: 1ae2feb7,1818057f,38007db0,31f7f899,247ef758
+- V1B: 1818057f,247ef758,7c66cb00
+- V1B: 1818057f,247ef758,bf45cf4b
+- V1B: 1818057f,1ae2feb7,16de56c4
+- V1B: 1818057f,31f7f899,136b0064
+- V1B: 1818057f,247ef758
+- V1B: 1818057f,247ef758,b0039139
+- V1B: 1818057f,bf45cf4b
+
+Let's do the same for the two stage solver:
+- V3: 1818057f
+- V3: 1818057f,31f7f899
+- V3: 1818057f
+- V3: 1818057f
+- V3: 1818057f
+- V3: NA
+- V3: NA
+- V3: NA
+- V3: 1818057f
+- V3: 1818057f
+- V3: 1818057f
+- V3: 1818057f
+
+So, the two-stage solver is significantly under-performing.
+
+# Can the two-stage solve problems that otherwise hit token cap?
+
+These problems consistently fail: a25697e4:1,abc82100:1,e12f9a14:2,269e22fb:2
+
+Outcome when running through 2-stage prompt:
+- Run 1: 269e22fb:2=Ok, abc82100:1=Tokens(1), e12f9a14:2=Timeout(1), abc82100:1=Tokens(2)
+- Run 2: a25697e4:1=Ok, abc82100:1=Tokens(1), e12f9a14:2=Timeout(2), 269e22fb:2=Support(2)
+
+It seems that it is maybe getting through a bit more, but it's still failing. And, it's failing in both stage 1 and stage 2
+
