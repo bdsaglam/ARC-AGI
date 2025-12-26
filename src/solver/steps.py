@@ -12,7 +12,7 @@ from src.solver.pipelines import run_objects_pipeline_variant
 
 def run_step_1(state, models):
     state.set_status(step=1, phase="Shallow search")
-    codegen_models = ["gpt-5.2-low"]
+    codegen_models = ["gpt-5.2-xhigh"]
     # total_models = len(models) + len(codegen_models)
     total_models = len(codegen_models)
     

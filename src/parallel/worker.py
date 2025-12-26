@@ -92,14 +92,6 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             stage1_input_tokens = input_tokens
             stage1_output_tokens = output_tokens
             stage1_cached_tokens = cached_tokens
-
-            print("\n" + "="*50, file=sys.stderr)
-            print(f"DEBUG: V3 STAGE 1 PROMPT (Analyst):", file=sys.stderr)
-            print(prompt, file=sys.stderr)
-            print("-" * 20, file=sys.stderr)
-            print(f"DEBUG: V3 STAGE 1 RESPONSE:", file=sys.stderr)
-            print(hypothesis_plan, file=sys.stderr)
-            print("="*50 + "\n", file=sys.stderr)
             
             from src.tasks import build_prompt_codegen_v3_stage2
             prompt_stage2 = build_prompt_codegen_v3_stage2(train_examples, all_test_examples, hypothesis_plan)
@@ -136,15 +128,6 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             duration_s2 = time.perf_counter() - start_ts_s2
             
             grid_text = response_s2.text
-
-            print("\n" + "="*50, file=sys.stderr)
-            print(f"DEBUG: V3 STAGE 2 PROMPT (Engineer):", file=sys.stderr)
-            print(prompt_stage2, file=sys.stderr)
-            print("-" * 20, file=sys.stderr)
-            print(f"DEBUG: V3 STAGE 2 RESPONSE:", file=sys.stderr)
-            print(grid_text, file=sys.stderr)
-            print("="*50 + "\n", file=sys.stderr)
-
             input_tokens_s2 = response_s2.prompt_tokens
             output_tokens_s2 = response_s2.completion_tokens
             cached_tokens_s2 = response_s2.cached_tokens
