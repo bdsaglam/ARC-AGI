@@ -61,7 +61,8 @@ def build_prompt_codegen_v2(train_examples: List[Example]) -> str:
         "",
         "ALLOWED / DISALLOWED TOOLS:",
         "- Do NOT use external libraries (NO numpy/pandas/cv2/etc.).",
-        "- If you need the standard library, import ONLY inside `solver` and keep it minimal (e.g., `collections`, `itertools`, `math`, `copy`).",
+        "- If you need other standard library modules, import ONLY inside `solver()` and keep it minimal.",
+        "- For your convenience, common utilities from `collections`, `typing`, `copy`, `math`, and `itertools` are already pre-imported (e.g., `Counter`, `deque`, `defaultdict`, `deepcopy`, `List`, `gcd`).",
         "- No file/network access, no reading/writing, no debugging output.",
         "",
         "SILENT INTERNAL REASONING WORKFLOW (do this privately; never reveal chain-of-thought):",
@@ -138,7 +139,8 @@ def build_prompt_codegen_v2b(train_examples: List[Example], test_examples: List[
         "",
         "ALLOWED / DISALLOWED TOOLS:",
         "- Do NOT use external libraries (NO numpy/pandas/cv2/etc.).",
-        "- If you need the standard library, import ONLY inside `solver` and keep it minimal (e.g., `collections`, `itertools`, `math`, `copy`).",
+        "- If you need other standard library modules, import ONLY inside `solver()` and keep it minimal.",
+        "- For your convenience, common utilities from `collections`, `typing`, `copy`, `math`, and `itertools` are already pre-imported (e.g., `Counter`, `deque`, `defaultdict`, `deepcopy`, `List`, `gcd`).",
         "- No file/network access, no reading/writing, no debugging output.",
         "",
         "SILENT INTERNAL REASONING WORKFLOW (do this privately; never reveal chain-of-thought):",
@@ -261,7 +263,13 @@ def build_prompt_codegen_v3_stage2(train_examples: List[Example], test_examples:
         "**Your Task:**",
         "1. Your task is to write a python function solver(input) that returns the output grid. The solver() function must solve all the input/output pairs. You're also given some input-only training data to help you ensure your solution is generalizable.",
         "2. Implement the correct logic into a Python function named `solver(input)`.",
-        "3. Return only the Python code."
+        "3. Return only the Python code.",
+        "",
+        "ALLOWED / DISALLOWED TOOLS:",
+        "- Do NOT use external libraries (NO numpy/pandas/cv2/etc.).",
+        "- If you need other standard library modules, import ONLY inside `solver()` and keep it minimal.",
+        "- For your convenience, common utilities from `collections`, `typing`, `copy`, `math`, and `itertools` are already pre-imported (e.g., `Counter`, `deque`, `defaultdict`, `deepcopy`, `List`, `gcd`).",
+        "- No file/network access, no reading/writing, no debugging output."
     ]
     return "\n".join(lines)
 

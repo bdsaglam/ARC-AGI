@@ -20,6 +20,32 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
         code = match.group(1).strip()
     
     local_scope = {}
+    
+    # Inject common utilities into the execution scope
+    import math
+    import itertools
+    import copy
+    from collections import Counter, deque, defaultdict
+    from typing import List, Optional, Tuple, Any, Dict, Set
+    
+    local_scope = {
+        "Counter": Counter,
+        "deque": deque,
+        "defaultdict": defaultdict,
+        "List": List,
+        "Optional": Optional,
+        "Tuple": Tuple,
+        "Any": Any,
+        "Dict": Dict,
+        "Set": Set,
+        "copy": copy.copy,
+        "deepcopy": copy.deepcopy,
+        "gcd": math.gcd,
+        "math": math,
+        "itertools": itertools,
+        "Grid": List[List[int]]
+    }
+
     try:
         # Execute the code definition
         exec(code, {}, local_scope)
