@@ -143,36 +143,46 @@ def run_app(
             print(f"Limiting execution to first {args.task_limit} tasks.")
             task_files = task_files[:args.task_limit]
 
-        task_test_filter = None
+        task_test_selection_list = None
         if args.task_test_selection:
             try:
-                task_test_filter = set()
+                task_test_selection_list = []
                 for item in args.task_test_selection.split(","):
                     parts = item.strip().split(":")
                     if len(parts) != 2:
                         raise ValueError(f"Invalid format for task:test selection: {item}")
-                    task_test_filter.add((parts[0], int(parts[1])))
-                print(f"Filtering to {len(task_test_filter)} specific task:test pairs.")
+                    task_test_selection_list.append((parts[0], int(parts[1])))
+                print(f"Preparing {len(task_test_selection_list)} specific task:test pairs.")
             except Exception as e:
                 print(f"Error parsing --task-test-selection: {e}", file=sys.stderr)
                 sys.exit(1)
 
         # Prepare tasks
         tasks_to_run = []
-        for task_file in task_files:
-            try:
-                # Load task briefly just to count tests, we load again in worker
-                # We don't need answer path here strictly, but good to know
-                task = load_task(task_file)
-                num_tests = len(task.test)
-                for i in range(num_tests):
-                    test_idx = i + 1
-                    if task_test_filter is not None:
-                        if (task_file.stem, test_idx) not in task_test_filter:
-                            continue
-                    tasks_to_run.append((task_file, test_idx))
-            except Exception as e:
-                print(f"Error loading task {task_file}: {e}", file=sys.stderr)
+        if task_test_selection_list:
+            for task_id, test_idx in task_test_selection_list:
+                try:
+                    # We can use find_task_path or manually construct path since we have directory
+                    task_path = directory / f"{task_id}.json"
+                    if not task_path.exists():
+                         # Fallback to general find_task_path if not in that specific directory
+                         task_path = find_task_path(task_id)
+                    
+                    tasks_to_run.append((task_path, test_idx))
+                except Exception as e:
+                    print(f"Error resolving task {task_id}: {e}", file=sys.stderr)
+        else:
+            for task_file in task_files:
+                try:
+                    # Load task briefly just to count tests, we load again in worker
+                    # We don't need answer path here strictly, but good to know
+                    task = load_task(task_file)
+                    num_tests = len(task.test)
+                    for i in range(num_tests):
+                        test_idx = i + 1
+                        tasks_to_run.append((task_file, test_idx))
+                except Exception as e:
+                    print(f"Error loading task {task_file}: {e}", file=sys.stderr)
 
         total_tasks = len(tasks_to_run)
         print(f"Found {len(task_files)} task files. Total test cases: {total_tasks}")
