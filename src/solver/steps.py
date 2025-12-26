@@ -12,7 +12,7 @@ from src.solver.pipelines import run_objects_pipeline_variant
 
 def run_step_1(state, models):
     state.set_status(step=1, phase="Shallow search")
-    codegen_models = ["gpt-5.2-medium"]
+    codegen_models = ["gpt-5.2-low"]
     # total_models = len(models) + len(codegen_models)
     total_models = len(codegen_models)
     
@@ -21,18 +21,8 @@ def run_step_1(state, models):
     if state.verbose >= 1:
         print(f"Running {total_models} models...")
     
-    prompt_step1 = build_prompt(state.task.train, state.test_example)
-    prompt_codegen = build_prompt_codegen(state.task.train)
-
-    # print("\n" + "="*50, file=sys.stderr)
-    # print("DEBUG: STANDARD PROMPT (prompt_step1):", file=sys.stderr)
-    # print(prompt_step1, file=sys.stderr)
-    # print("="*50 + "\n", file=sys.stderr)
-
-    print("\n" + "="*50, file=sys.stderr)
-    print("DEBUG: CODEGEN PROMPT (prompt_codegen):", file=sys.stderr)
-    print(prompt_codegen, file=sys.stderr)
-    print("="*50 + "\n", file=sys.stderr)
+    # prompt_step1 = build_prompt(state.task.train, state.test_example)
+    prompt_codegen = build_prompt_codegen(state.task.train, test_examples=state.task.test, version=state.codegen_prompt)
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         # f1 = executor.submit(run_models_in_parallel, models, state.run_id_counts, "step_1", prompt_step1, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, completion_message="Broad search", use_background=state.openai_background)

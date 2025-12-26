@@ -92,7 +92,8 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
                     task_status=task_status,
                     openai_background=args.openai_background,
                     enable_step_3_and_4=args.enable_step_3_and_4,
-                    judge_consistency_enable=args.judge_consistency_enable
+                    judge_consistency_enable=args.judge_consistency_enable,
+                    codegen_prompt=args.codegen_prompt
                 )
             except Exception as e:
                 raise e

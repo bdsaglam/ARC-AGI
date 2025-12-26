@@ -15,7 +15,7 @@ def check_correctness(call_val, task_id, test_id, answers):
                     is_correct = False
     return is_correct
 
-def create_call_info(name, data, task_id, test_id, answers, generator=None):
+def create_call_info(name, data, task_id, test_id, answers, generator=None, run_id=None):
     duration = 0
     cost = 0
     input_tokens = 0
@@ -40,21 +40,28 @@ def create_call_info(name, data, task_id, test_id, answers, generator=None):
             
     extracted_grid_failed = False
     bad_grid = False
-    if isinstance(data, dict) and "Extracted grid" in data:
-        extracted = data["Extracted grid"]
-        if extracted is None:
-            extracted_grid_failed = True
-        elif isinstance(extracted, list):
-             height = len(extracted)
-             width = 0
-             if height > 0 and isinstance(extracted[0], list):
-                 width = len(extracted[0])
-             
-             if height == 1 or width == 1:
-                 bad_grid = True
+    verification_details = {}
+    llm_response = ""
+    extracted_grid = None
+    if isinstance(data, dict):
+        llm_response = data.get("Full raw LLM response", "")
+        verification_details = data.get("verification_details", {})
+        if "Extracted grid" in data:
+            extracted_grid = data["Extracted grid"]
+            if extracted_grid is None:
+                extracted_grid_failed = True
+            elif isinstance(extracted_grid, list):
+                height = len(extracted_grid)
+                width = 0
+                if height > 0 and isinstance(extracted_grid[0], list):
+                    width = len(extracted_grid[0])
+                
+                if height == 1 or width == 1:
+                    bad_grid = True
 
     return {
         "name": name,
+        "run_id": run_id if run_id else name,
         "duration": duration,
         "cost": cost,
         "input_tokens": input_tokens,
@@ -64,7 +71,10 @@ def create_call_info(name, data, task_id, test_id, answers, generator=None):
         "status": status_str,
         "generator": generator,
         "extracted_grid_failed": extracted_grid_failed,
-        "bad_grid": bad_grid
+        "bad_grid": bad_grid,
+        "verification_details": verification_details,
+        "llm_response": llm_response,
+        "extracted_grid": extracted_grid
     }
 
 def parse_finish_step(content):
@@ -186,7 +196,7 @@ def parse_nested_step(content, task_id, test_id, answers):
                 
                 # Check for cost/duration directly in call_val or if they are missing
                 # Some logs might put stats in a wrapper, but schema says it's direct.
-                cleaned_calls.append(create_call_info(name, call_val, task_id, test_id, answers))
+                cleaned_calls.append(create_call_info(name, call_val, task_id, test_id, answers, run_id=call_key))
                 continue
 
             if call_key in nested_containers and isinstance(call_val, dict):
@@ -211,7 +221,7 @@ def parse_nested_step(content, task_id, test_id, answers):
                     if model:
                         cleaned_name += f" ({model})"
                     
-                    cleaned_calls.append(create_call_info(cleaned_name, inner_val, task_id, test_id, answers, generator=generator_name))
+                    cleaned_calls.append(create_call_info(cleaned_name, inner_val, task_id, test_id, answers, generator=generator_name, run_id=inner_call))
             else:
                 # Process normal call
                 if "_step_" in call_key:
@@ -226,7 +236,7 @@ def parse_nested_step(content, task_id, test_id, answers):
                 elif "opus_gen" in call_key:
                     gen_name = "Opus"
                 
-                cleaned_calls.append(create_call_info(cleaned_name, call_val, task_id, test_id, answers, generator=gen_name))
+                cleaned_calls.append(create_call_info(cleaned_name, call_val, task_id, test_id, answers, generator=gen_name, run_id=call_key))
         
         result["steps"][new_step_name] = cleaned_calls
         
@@ -252,7 +262,7 @@ def parse_generic_step(content, task_id, test_id, answers):
         else:
             cleaned_name = call_key
         
-        result["calls"].append(create_call_info(cleaned_name, call_val, task_id, test_id, answers))
+        result["calls"].append(create_call_info(cleaned_name, call_val, task_id, test_id, answers, run_id=call_key))
         
     return result
 

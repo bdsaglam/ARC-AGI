@@ -1,6 +1,18 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple, Optional, Set
+from typing import Tuple, Optional, Set, List
+
+from src.grid import Grid
+
+@dataclass
+class Example:
+    input: Grid
+    output: Optional[Grid]
+
+@dataclass
+class Task:
+    train: List[Example]
+    test: List[Example]
 
 # Constants
 GPT_5_1_BASE = "gpt-5.1"
