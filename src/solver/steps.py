@@ -27,7 +27,7 @@ def run_step_1(state, models):
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         # f1 = executor.submit(run_models_in_parallel, models, state.run_id_counts, "step_1", prompt_step1, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, completion_message="Broad search", use_background=state.openai_background)
-        f2 = executor.submit(run_models_in_parallel, codegen_models, state.run_id_counts, "step_1_codegen", prompt_codegen, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, completion_message="Broad search (codegen)", use_background=state.openai_background, execution_mode=exec_mode, train_examples=state.task.train, all_test_examples=state.task.test)
+        f2 = executor.submit(run_models_in_parallel, codegen_models, state.run_id_counts, "step_1_codegen", prompt_codegen, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, completion_message="Broad search (codegen)", use_background=state.openai_background, execution_mode=exec_mode, train_examples=state.task.train, all_test_examples=state.task.test, codegen_version=state.codegen_prompt)
         
         results_step1 = []
         results_codegen = f2.result()

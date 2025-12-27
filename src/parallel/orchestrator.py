@@ -2,7 +2,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.parallel.worker import run_single_model
 
-def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, completion_message: str = None, on_task_complete=None, use_background=False, execution_mode="grid", train_examples=None, all_test_examples=None):
+def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, completion_message: str = None, on_task_complete=None, use_background=False, execution_mode="grid", train_examples=None, all_test_examples=None, codegen_version: str = None):
     all_results = []
     
     # Wrapper for debugging queue times
@@ -21,13 +21,21 @@ def run_models_in_parallel(models_to_run, run_id_counts, step_name, prompt, test
             count = run_id_counts.get(model_name, 0) + 1
             run_id_counts[model_name] = count
             run_id = f"{model_name}_{count}_{step_name}"
-            run_list.append({"name": model_name, "run_id": run_id})
+            
+            # Per-model prompt generation if codegen_version is provided
+            current_prompt = prompt
+            if codegen_version:
+                from src.tasks import build_prompt_codegen
+                current_prompt = build_prompt_codegen(train_examples, test_examples=all_test_examples, version=codegen_version, model_name=model_name)
+                # Debug print for specific models if needed (we'll skip general printing to keep logs clean)
+
+            run_list.append({"name": model_name, "run_id": run_id, "prompt": current_prompt})
 
         future_to_run_id = {
             executor.submit(
                 debug_run_single_model,
                 time.time(), # Capture queue time
-                run["name"], run["run_id"], prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path, run_timestamp, task_id, test_index, step_name, use_background, execution_mode, train_examples, all_test_examples
+                run["name"], run["run_id"], run["prompt"], test_example, openai_client, anthropic_client, google_keys, verbose, image_path, run_timestamp, task_id, test_index, step_name, use_background, execution_mode, train_examples, all_test_examples
             ): run["run_id"]
             for run in run_list
         }

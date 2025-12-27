@@ -19,7 +19,7 @@ def build_prompt_codegen_v1(train_examples: List[Example]) -> str:
     lines.append("Only output the python code for the solver() function")
     return "\n".join(lines)
 
-def build_prompt_codegen_v1b(train_examples: List[Example], test_examples: List[Example]) -> str:
+def build_prompt_codegen_v1b(train_examples: List[Example], test_examples: List[Example], model_name: str = None) -> str:
     lines = [
         "Below is an ARC AGI task. You're given the training input/output pairs. Your task is to write a python function solver(input) that returns the output grid. The solver() function must solve all the input/output pairs. You're also given some input-only training data to help you ensure your solution is generalizable.",
         ""
@@ -41,10 +41,24 @@ def build_prompt_codegen_v1b(train_examples: List[Example], test_examples: List[
         lines.append(str(ex.input))
         lines.append("")
 
-    lines.append("Only output the python code for the solver() function")
+    if model_name and "gemini" in model_name.lower():
+        lines.append("*** MANDATORY REASONING PROTOCOL (High Reasoning Mode) ***")
+        lines.append("You are running with a HIGH thinking budget. Do NOT output the code immediately.")
+        lines.append("You must first output a verbose \"Thinking Process\" that follows these steps:")
+        lines.append("")
+        lines.append("1.  **Object Analysis**: Explicitly list the objects, colors, and geometric patterns you see in the Training Examples.")
+        lines.append("2.  **Hypothesis Generation**: Propose a logic rule that transforms Input -> Output.")
+        lines.append("3.  **Falsification (Crucial)**: Pick the *last* Training Example and the first Probe. Mentally \"dry run\" your proposed rule pixel-by-pixel. Write out the trace (e.g., \"Pixel (0,0) is 8, rule says change to...\").")
+        lines.append("4.  **Refinement**: If the dry run fails or is ambiguous on the Probe, refine the rule.")
+        lines.append("")
+        lines.append("Only after this exhaustive analysis, output the final python code wrapped in a markdown block:")
+        lines.append("```python")
+        lines.append("def solver(input):")
+        lines.append("    # ...")
+    else:
+        lines.append("Only output the python code for the solver() function")
+
     prompt = "\n".join(lines)
-    import sys
-    print(f"DEBUG: V1B PROMPT:\n{prompt}\n--- END PROMPT ---", file=sys.stderr)
     return prompt
 
 def build_prompt_codegen_v2(train_examples: List[Example]) -> str:
@@ -279,13 +293,13 @@ def build_prompt_codegen_v3_stage2(train_examples: List[Example], test_examples:
     ]
     return "\n".join(lines)
 
-def build_prompt_codegen(train_examples: List[Example], test_examples: List[Example] = None, version: str = "v2") -> str:
+def build_prompt_codegen(train_examples: List[Example], test_examples: List[Example] = None, version: str = "v2", model_name: str = None) -> str:
     if version == "v1":
         return build_prompt_codegen_v1(train_examples)
     elif version == "v1b":
         if test_examples is None:
              raise ValueError("V1B prompt requires test_examples")
-        return build_prompt_codegen_v1b(train_examples, test_examples)
+        return build_prompt_codegen_v1b(train_examples, test_examples, model_name=model_name)
     elif version == "v2b":
         if test_examples is None:
              raise ValueError("V2B prompt requires test_examples")
