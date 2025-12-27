@@ -33,13 +33,14 @@ def run_app(
     hint=None,
     image=False,
     codegen_prompt="v1b",
-    codegen_models="gpt-5.2-xhigh",
+    codegen_models="gpt-5.2-medium,gpt-5.2-medium,claude-opus-4.5-thinking-4000,gemini-3-low",
     disable_retries=False,
     trigger_deep_thinking=False,
     generate_hint=False,
     generate_hint_model="gpt-5.1-medium",
     judge_model=None,
     old_pick_solution=False,
+    logs_directory="logs/",
     submissions_directory="submissions/",
     answers_directory=None,
     solver=False,
@@ -74,6 +75,7 @@ def run_app(
         generate_hint_model=generate_hint_model,
         judge_model=judge_model,
         old_pick_solution=old_pick_solution,
+        logs_directory=logs_directory,
         submissions_directory=submissions_directory,
         answers_directory=answers_directory,
         solver=solver,
@@ -115,7 +117,7 @@ def run_app(
     warnings.filterwarnings("ignore", message=r"Pydantic serializer warnings:", category=UserWarning)
 
     # Ensure logs directory exists
-    logs_dir = Path("logs")
+    logs_dir = Path(args.logs_directory)
     if not logs_dir.exists():
         logs_dir.mkdir(parents=True, exist_ok=True)
 

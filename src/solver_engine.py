@@ -1,16 +1,18 @@
 import sys
 from pathlib import Path
 
-from src.logging import log_failure
+from src.logging import log_failure, set_log_dir
 from src.solver.state import SolverState
 from src.solver.steps import run_step_1, run_step_3, run_step_5, check_is_solved
 
 # Re-export run_solver_mode for backward compatibility if imported elsewhere
-def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False, force_step_2: bool = False, judge_model: str = "gemini-3-high", old_pick_solution: bool = False, task_status=None, openai_background: bool = True, enable_step_3_and_4: bool = False, judge_consistency_enable: bool = False, codegen_prompt: str = "v1b", codegen_models: str = "gpt-5.2-xhigh"):
+def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False, force_step_2: bool = False, judge_model: str = "gemini-3-high", old_pick_solution: bool = False, task_status=None, openai_background: bool = True, enable_step_3_and_4: bool = False, judge_consistency_enable: bool = False, codegen_prompt: str = "v1b", codegen_models: str = "gpt-5.2-medium,gpt-5.2-medium,claude-opus-4.5-thinking-4000,gemini-3-low", logs_directory: str = "logs/"):
     
+    set_log_dir(logs_directory)
+
     # Initialize State
     try:
-        state = SolverState(task_id, test_index, verbose, is_testing, run_timestamp, task_path, answer_path, judge_model, old_pick_solution=old_pick_solution, task_status=task_status, openai_background=openai_background, judge_consistency_enable=judge_consistency_enable, codegen_prompt=codegen_prompt)
+        state = SolverState(task_id, test_index, verbose, is_testing, run_timestamp, task_path, answer_path, judge_model, old_pick_solution=old_pick_solution, task_status=task_status, openai_background=openai_background, judge_consistency_enable=judge_consistency_enable, codegen_prompt=codegen_prompt, logs_directory=logs_directory)
     except Exception as e:
         print(f"Error initializing solver state: {e}", file=sys.stderr)
         raise e
@@ -20,7 +22,7 @@ def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: boo
         if codegen_models:
              models_step1 = [m.strip() for m in codegen_models.split(",")]
         else:
-             models_step1 = ["gpt-5.2-xhigh"]
+             models_step1 = ["gpt-5.2-medium", "gpt-5.2-medium", "claude-opus-4.5-thinking-4000", "gemini-3-low"]
 
         if is_testing:
             # Models for --solver-testing
@@ -80,7 +82,8 @@ def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: boo
             error=e,
             model="SYSTEM",
             step="MAIN",
-            test_index=test_index
+            test_index=test_index,
+            log_dir=logs_directory
         )
         print(f"CRITICAL ERROR in run_solver_mode: {e}", file=sys.stderr)
         raise e

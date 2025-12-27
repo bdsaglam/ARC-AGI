@@ -95,6 +95,10 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
 
         # Verification Step
         if train_examples:
+            all_passed = True
+            first_fail_status = None
+            first_fail_index = -1
+
             for i, ex in enumerate(train_examples):
                 entry = {
                     "index": i, 
@@ -110,23 +114,29 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
                     
                     if res != ex.output:
                         entry["status"] = "FAIL"
-                        verification_log["train_results"].append(entry)
-                        verification_log["status"] = "FAIL_VERIFICATION"
-                        verification_log["failed_example_index"] = i
-                        return None, verification_log
+                        all_passed = False
+                        if first_fail_status is None:
+                            first_fail_status = "FAIL_VERIFICATION"
+                            first_fail_index = i
                     else:
                         entry["status"] = "PASS"
-                        verification_log["train_results"].append(entry)
                         
                 except Exception as e:
                     print(f"DEBUG {log_prefix}: Solver CRASHED on Train Example {i+1}: {e}", file=sys.stderr)
-                    traceback.print_exc(file=sys.stderr)
+                    # traceback.print_exc(file=sys.stderr) # Reduce verbosity
                     entry["status"] = "CRASH"
                     entry["error"] = str(e)
-                    verification_log["train_results"].append(entry)
-                    verification_log["status"] = "FAIL_CRASH"
-                    verification_log["failed_example_index"] = i
-                    return None, verification_log
+                    all_passed = False
+                    if first_fail_status is None:
+                        first_fail_status = "FAIL_CRASH"
+                        first_fail_index = i
+                
+                verification_log["train_results"].append(entry)
+            
+            if not all_passed:
+                verification_log["status"] = first_fail_status
+                verification_log["failed_example_index"] = first_fail_index
+                return None, verification_log
             
             verification_log["status"] = "PASS"
             

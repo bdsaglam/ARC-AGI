@@ -38,7 +38,7 @@ def main():
     parser.add_argument("--hint", type=str, default=None, help="Optional hint to provide to the model")
     parser.add_argument("--image", action="store_true", help="Generate an image for the task and include it in the prompt.")
     parser.add_argument("--codegen-prompt", type=str, choices=["v1", "v1b", "v2", "v2b", "v3"], default="v1b", help="Version of the codegen prompt to use (default: v1b).")
-    parser.add_argument("--codegen-models", type=str, default="gpt-5.2-xhigh", help="Comma-separated list of models to use for codegen (default: gpt-5.2-xhigh).")
+    parser.add_argument("--codegen-models", type=str, default="gpt-5.2-medium,gpt-5.2-medium,claude-opus-4.5-thinking-4000,gemini-3-low", help="Comma-separated list of models to use for codegen (default: gpt-5.2-medium,gpt-5.2-medium,claude-opus-4.5-thinking-4000,gemini-3-low).")
     parser.add_argument("--disable-retries", action="store_true", help="Disable all retries for LLM calls.")
     parser.add_argument("--trigger-deep-thinking", action="store_true", help="Append a deep thinking procedure to the prompt.")
     parser.add_argument("--generate-hint", action="store_true", help="Generate a hint for the task using a separate model call.")
@@ -48,6 +48,7 @@ def main():
     parser.add_argument("--disable-openai-background", dest="openai_background", action="store_false", default=os.getenv("OPENAI_BACKGROUND", "true").lower() == "true", help="Disable OpenAI Background (Responses) API (Default: Enabled).")
     parser.add_argument("--enable-step-3-and-4", action="store_true", help="Enable Steps 3 and 4 (Narrow Search and Extended Check) which are disabled by default.")
     parser.add_argument("--judge-consistency-enable", action="store_true", help="Enable the Consistency Judge in the advanced solution picker (Disabled by default).")
+    parser.add_argument("--logs-directory", type=str, default="logs/", help="Directory to save log files (default: logs/).")
     parser.add_argument("--submissions-directory", type=str, default="submissions/", help="Directory to save submission files (default: submissions/).")
     parser.add_argument("--answers-directory", type=str, help="Optional directory containing answer files (with 'output' for test cases).")
 

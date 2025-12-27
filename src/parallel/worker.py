@@ -13,6 +13,9 @@ from src.parallel.codegen import extract_and_run_solver
 def run_single_model(model_name, run_id, prompt, test_example, openai_client, anthropic_client, google_keys, verbose, image_path=None, run_timestamp=None, task_id=None, test_index=None, step_name=None, use_background=False, execution_mode="grid", train_examples=None, all_test_examples=None):
     original_model_name = model_name
     prefix = f"[{run_id}]"
+    if task_id is not None:
+         prefix = f"[{run_id}|{task_id}:{test_index}]"
+    
     if verbose:
         print(f"{prefix} Initiating call...")
         if image_path:

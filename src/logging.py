@@ -132,6 +132,12 @@ class StderrToStdoutRedirector:
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(*args, **kwargs)
 
+_CURRENT_LOG_DIR = "logs"
+
+def set_log_dir(path: str):
+    global _CURRENT_LOG_DIR
+    _CURRENT_LOG_DIR = path
+
 def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(f"arc_agi.{name}")
 
@@ -143,17 +149,19 @@ def log_failure(
     model: str = None,
     step: str = None,
     test_index: int = None,
-    is_retryable: bool = False
+    is_retryable: bool = False,
+    log_dir: str = None
 ):
     """
     Logs a structured failure record to a JSONL file.
     Designed to be a 'System of Record' for terminal failures.
     """
     try:
-        # Construct the failures file path: logs/{timestamp}_failures.jsonl
-        log_dir = Path("logs")
-        log_dir.mkdir(exist_ok=True)
-        failures_path = log_dir / f"{run_timestamp}_failures.jsonl"
+        # Construct the failures file path: {log_dir}/{timestamp}_failures.jsonl
+        ldir = log_dir if log_dir is not None else _CURRENT_LOG_DIR
+        log_path = Path(ldir)
+        log_path.mkdir(exist_ok=True, parents=True)
+        failures_path = log_path / f"{run_timestamp}_failures.jsonl"
 
         entry = {
             "timestamp": datetime.datetime.now().isoformat(),
@@ -183,8 +191,10 @@ def log_failure(
         # Fallback: Don't let logging crash the application
         print(f"CRITICAL: Failed to log failure to DLQ: {e}", file=sys.stderr)
 
-def write_step_log(step_name: str, data: dict, timestamp: str, task_id: str, test_index: int, verbose: bool = False):
-    log_path = Path("logs") / f"{timestamp}_{task_id}_{test_index}_{step_name}.json"
+def write_step_log(step_name: str, data: dict, timestamp: str, task_id: str, test_index: int, verbose: bool = False, log_dir: str = None):
+    ldir = log_dir if log_dir is not None else _CURRENT_LOG_DIR
+    log_path = Path(ldir) / f"{timestamp}_{task_id}_{test_index}_{step_name}.json"
+    log_path.parent.mkdir(exist_ok=True, parents=True)
     with open(log_path, "w") as f:
         json.dump(data, f, indent=4, default=lambda o: '<not serializable>')
     if verbose:

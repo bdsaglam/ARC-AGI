@@ -12,7 +12,7 @@ from src.logging import setup_logging, write_step_log, PrefixedStdout
 from src.models import parse_model_arg, PRICING_PER_1M_TOKENS, GEMINI_3_BASE
 
 class SolverState:
-    def __init__(self, task_id: str, test_index: int, verbose: int, is_testing: bool, run_timestamp: str, task_path: Path = None, answer_path: Path = None, judge_model: str = "gemini-3-high", old_pick_solution: bool = False, task_status=None, openai_background: bool = True, judge_consistency_enable: bool = False, codegen_prompt: str = "v1b"):
+    def __init__(self, task_id: str, test_index: int, verbose: int, is_testing: bool, run_timestamp: str, task_path: Path = None, answer_path: Path = None, judge_model: str = "gemini-3-high", old_pick_solution: bool = False, task_status=None, openai_background: bool = True, judge_consistency_enable: bool = False, codegen_prompt: str = "v1b", logs_directory: str = "logs/"):
         self.task_id = task_id
         self.test_index = test_index
         self.verbose = verbose
@@ -25,6 +25,7 @@ class SolverState:
         self.openai_background = openai_background
         self.judge_consistency_enable = judge_consistency_enable
         self.codegen_prompt = codegen_prompt
+        self.logs_directory = logs_directory
         self.task_status.setdefault('step', '0')
         self.task_status.setdefault('phase', 'Init')
         self.task_status.setdefault('start_time', time.time())
