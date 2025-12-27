@@ -237,6 +237,7 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
             return None, verification_log
 
     except Exception as e:
+        print(f"DEBUG {log_prefix}: Extractor System Crash: {e}", file=sys.stderr)
         verification_log["status"] = "FAIL_EXTRACTOR_CRASH"
         verification_log["error"] = f"{type(e).__name__}: {str(e)}"
         verification_log["traceback"] = traceback.format_exc()
