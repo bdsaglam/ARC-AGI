@@ -39,3 +39,21 @@ Conclusion: No information obtainable from them performing differently
 
 Yes, whichever solver solves the most of the generated data will should be chosen. Will it be more likely to be right? Or strickly be better? I think it'll strictly be better.
 
+
+# TEST: Rotation, reflection, color
+
+I added 9 augmented training examples for each given training example: 3 rotations, 3 reflections, and 3 color swaps (yes, one reflection overlapping with rotation)
+
+Results below:
+- 136b0064:1 : PASS (0.0/0.0/0.0) - e.g. all augmented examples failed, but solution was still right
+- 16de56c4:1 : PASS (0.0/0.0/0.0)
+- 247ef758:1 : PASS (0.0/0.33/0.0)
+- 31f7f899:1 : FAIL (0.0/0.33/0.0) and PASS (0.0/0.33/1.0) - e.g. the color swap passing actually indicated it was a better solution, even though for this problem it doesn't seem to have any meaning
+- 36a08778:1 : PASS (0.0/0.33/1.0)
+- 7b5033c1:1 : FAIL (0.33/1.0/1.0)
+
+It's questionable whether there is any signal here. Sorting of the solutions, at best.
+
+
+
+
