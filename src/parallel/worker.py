@@ -189,6 +189,12 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             except Exception as e:
                 if verbose:
                     print(f"{prefix} Code Execution Failed: {e}")
+                if verification_details is None:
+                    verification_details = {
+                        "status": "FAIL_EXTRACTOR_CRASH",
+                        "error": str(e),
+                        "traceback": traceback.format_exc()
+                    }
         else:
             # GRID parsing path (Standard)
             try:
