@@ -71,3 +71,21 @@ Let's instead test on the frontier problems (3dc255db:1,8b7bacbf:2,0934a4d8:1,e3
 - gpt-5.2-xhigh: 26 solved, 207 timed out, 143 fail (8x attempts on 47 problems)
 
 Gemini might be adding a bit of value, but it's really all about gpt-5.2. On half of the problems that gemini solved, there also was a gpt-5.2 solution, so there is some additional value from Gemini.
+
+The problem with Gemini is that it's not doing a deep enough search:
+- gpt-5.2-xhigh, 1489.49s average, 2652.03s (95%), $0.9896 cost, 69364.6 tokens (output)
+- gemini-3-high, 251.69s average, 306.91s (95%), $0.0472 cost, 2158.6 tokens
+- claude-opus-4.5-thinking-60000, 572.23s average, 849.84s (95%), $0.9963 cost, 38197.6 tokens
+
+We need to somehow force gemini to search much much deeper.
+
+After changing the prompt and fixing some math on how tokens are used, this is the result:
+
+Model                           Count     Avg (s)     95% (s)     Max (s)
+gemini-3-high                   20        355.33      525.68      596.64
+
+Model                           Avg Cost    Total Cost    % of Total   Avg Input  Avg Output Avg Cached
+gemini-3-high_1_step_1_codegen  $0.3668     $1.8338          25.25%    10245.4    28856.2    0.0       
+gemini-3-high_2_step_1_codegen  $0.3854     $1.9269          26.53%    9537.8     30525.8    0.0       
+gemini-3-high_3_step_1_codegen  $0.3770     $1.8849          25.95%    9498.6     29831.4    0.0       
+gemini-3-high_4_step_1_codegen  $0.3237     $1.6183          22.28%    10575.0    25208.4    0.0    
