@@ -70,6 +70,14 @@ def print_full_report(task_data, model_stats, failure_count=0, max_token_failure
                 details = call_info.get("verification_details")
                 if details and isinstance(details, dict):
                     verification_status = details.get("status", "-")
+                    
+                    if verification_status == "PASS":
+                        aug = details.get("augmented_stats", {})
+                        if aug:
+                            rot = aug.get("rotation_pass_rate", "-")
+                            ref = aug.get("reflection_pass_rate", "-")
+                            col = aug.get("color_pass_rate", "-")
+                            verification_status += f" ({rot}/{ref}/{col})"
 
                 print(f"    {name:<{max_name_len}} {duration:8.2f}s  ${cost:9.4f}  {status_val:<8} {verification_status}")
 
