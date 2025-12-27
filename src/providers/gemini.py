@@ -30,6 +30,7 @@ def call_gemini(
     run_timestamp: str = None,
     model_alias: str = None,
     timing_tracker: list[dict] = None,
+    enable_code_execution: bool = False,
 ) -> ModelResponse:
     
     model = config.base_model
@@ -59,9 +60,15 @@ def call_gemini(
     # Typically the SDK accepts "low" / "high" strings for this field if typed as ThinkingLevel
     level_val = "low" if thinking_level == "low" else "high"
     
+    # Configure tools
+    tools = []
+    if enable_code_execution:
+        tools.append(types.Tool(code_execution=types.ToolCodeExecution()))
+
     gen_config = types.GenerateContentConfig(
         temperature=1.0,
         max_output_tokens=65536,
+        tools=tools if tools else None,
         thinking_config=types.ThinkingConfig(
             include_thoughts=True, 
             thinking_level=level_val
@@ -131,6 +138,7 @@ def call_gemini(
                 prompt_tokens=usage.prompt_token_count if usage and usage.prompt_token_count is not None else 0,
                 cached_tokens=0,
                 completion_tokens=usage.candidates_token_count if usage and usage.candidates_token_count is not None else 0,
+                thought_tokens=getattr(usage, "thoughts_token_count", 0) if usage else 0
             )
         except Exception as e:
              raise RuntimeError(f"Failed to parse Gemini response: {e} - Raw: {response}")
@@ -159,6 +167,7 @@ def call_gemini(
                 prompt_tokens=usage.prompt_token_count if usage and usage.prompt_token_count is not None else 0,
                 cached_tokens=0,
                 completion_tokens=usage.candidates_token_count if usage and usage.candidates_token_count is not None else 0,
+                thought_tokens=getattr(usage, "thoughts_token_count", 0) if usage else 0
             )
         except Exception as e:
             logger.error(f"Step 2 strategy extraction failed: {e}")

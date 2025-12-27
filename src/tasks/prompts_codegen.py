@@ -59,6 +59,8 @@ def build_prompt_codegen_v1b(train_examples: List[Example], test_examples: List[
         lines.append("Only output the python code for the solver() function")
 
     prompt = "\n".join(lines)
+    import sys
+    print(f"DEBUG: V1B PROMPT:\n{prompt}\n--- END PROMPT ---", file=sys.stderr)
     return prompt
 
 def build_prompt_codegen_v2(train_examples: List[Example]) -> str:
@@ -293,6 +295,78 @@ def build_prompt_codegen_v3_stage2(train_examples: List[Example], test_examples:
     ]
     return "\n".join(lines)
 
+def build_prompt_codegen_v4(train_examples: List[Example], test_examples: List[Example]) -> str:
+    lines = [
+        "[ARC TASK DATA START]",
+        ""
+    ]
+    
+    lines.append("Solved examples:")
+    for idx, ex in enumerate(train_examples, start=1):
+        lines.append(f"Example {idx}:")
+        lines.append("input:")
+        lines.append(str(ex.input))
+        lines.append("output:")
+        lines.append(str(ex.output))
+        lines.append("")
+
+    lines.append("Input-only training data (Probe Inputs):")
+    for idx, ex in enumerate(test_examples, start=1):
+        lines.append(f"Probe {idx}:")
+        lines.append("input:")
+        lines.append(str(ex.input))
+        lines.append("")
+    
+    lines.extend([
+        "[ARC TASK DATA END]",
+        "",
+        "*** INSTRUCTIONS: SCIENTIFIC VERIFICATION PROTOCOL ***",
+        "",
+        "You are an expert ARC-AGI Solver Architect equipped with a **Python Code Execution Tool**.",
+        "Your goal is to write a final, robust `solver(input_grid)` function.",
+        "You are provided with **Solved Training Pairs** (to derive the rule) and **Unlabeled Probe Inputs** (to test generalizability).",
+        "",
+        "**CRITICAL RULE:** Do NOT guess. Do NOT rely on visual intuition alone. You must PROVE your solution works using the tool.",
+        "",
+        "### PHASE 1: EXPERIMENTATION (Mandatory Tool Usage)",
+        "Before answering, you must use the Python tool to perform this cycle:",
+        "",
+        "1.  **Load Data**: The python environment starts empty. Write a script to define:",
+        "    *   `train_inputs` and `train_outputs` (from the Solved Examples).",
+        "    *   `probe_inputs` (from the Input-Only Data).",
+        "",
+        "2.  **Analyze**: Use numpy to inspect ALL grids (training + probes). ",
+        "    *   *Check the Probes*: Do they have different sizes? Do they introduce new colors? ",
+        "    *   Ensure your rule does not rely on assumptions that the Probes violate.",
+        "",
+        "3.  **Prototype & Verify (The Loop)**:",
+        "    *   Draft a candidate `solver` function inside the tool.",
+        "    *   **Test 1 (Accuracy)**: Run the function on ALL `train_inputs` and assert that the result matches `train_outputs` EXACTLY.",
+        "    *   **Test 2 (Generalization)**: Run the function on ALL `probe_inputs`. ",
+        "        *   Since you don't have the answers, you cannot check accuracy. ",
+        "        *   INSTEAD, CHECK FOR CRASHES. Ensure the function runs without error (e.g., no `IndexError`, `ValueError`) and returns a valid grid.",
+        "    *   **Refine**: If any test fails, use `print()` to see the error/diff, rewrite the function, and run the cycle again.",
+        "    *   Repeat until your python script prints \"ALL TRAINING PASSED & PROBES VALID\".",
+        "",
+        "### PHASE 2: FINAL OUTPUT",
+        "Once (and ONLY once) you have a valid python script that has passed the verification loop in the logs:",
+        "",
+        "1.  Output the final, standalone `solver(input_grid)` function.",
+        "2.  The code must be self-contained (import numpy as np inside).",
+        "3.  **Do not include the test harness or data loading** in the final block. Just the solver function.",
+        "4.  Precede the final code block with exactly this label: `### FINAL SOLUTION ###` (followed by code block)",
+        "",
+        "Format:",
+        "### FINAL SOLUTION ###",
+        "```python",
+        "import numpy as np",
+        "",
+        "def solver(input_grid):",
+        "    # ...",
+        "```"
+    ])
+    return "\n".join(lines)
+
 def build_prompt_codegen(train_examples: List[Example], test_examples: List[Example] = None, version: str = "v2", model_name: str = None) -> str:
     if version == "v1":
         return build_prompt_codegen_v1(train_examples)
@@ -304,6 +378,10 @@ def build_prompt_codegen(train_examples: List[Example], test_examples: List[Exam
         if test_examples is None:
              raise ValueError("V2B prompt requires test_examples")
         return build_prompt_codegen_v2b(train_examples, test_examples)
+    elif version == "v4":
+        if test_examples is None:
+             raise ValueError("V4 prompt requires test_examples")
+        return build_prompt_codegen_v4(train_examples, test_examples)
     elif version == "v3":
         if test_examples is None:
              raise ValueError("V3 prompt requires test_examples")

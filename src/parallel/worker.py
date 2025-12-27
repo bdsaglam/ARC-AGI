@@ -61,7 +61,8 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             step_name=step_name,
             use_background=use_background,
             run_timestamp=run_timestamp,
-            timing_tracker=timings
+            timing_tracker=timings,
+            enable_code_execution=(execution_mode == "v4")
         )
         duration = time.perf_counter() - start_ts
         full_response = response.text
@@ -145,7 +146,8 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
                     step_name=f"{step_name}_s2",
                     use_background=use_background,
                     run_timestamp=run_timestamp,
-                    timing_tracker=timings
+                    timing_tracker=timings,
+                    enable_code_execution=(execution_mode == "v4")
                 )
                 duration_s2 = time.perf_counter() - start_ts_s2
                 
@@ -191,8 +193,8 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
         predicted_grid = None
         verification_details = None
         
-        if execution_mode in ("code", "v3"):
-            # Both code mode and v3 use the execution engine
+        if execution_mode in ("code", "v3", "v4"):
+            # Both code mode, v3 and v4 use the execution engine
             try:
                 # test_example.input is a list of lists
                 predicted_grid, verification_details = extract_and_run_solver(grid_text, test_example.input, train_examples=train_examples, task_id=task_id, test_index=test_index)

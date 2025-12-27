@@ -65,15 +65,24 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
 
     try:
         code = llm_code
+        
+        # v4: Look for ### FINAL SOLUTION ### marker
+        if "### FINAL SOLUTION ###" in llm_code:
+            parts = llm_code.split("### FINAL SOLUTION ###")
+            # Take the part after the marker
+            code_search_area = parts[-1]
+        else:
+            code_search_area = llm_code
+
         # Try to extract from markdown block
         pattern = r"```python(.*?)```"
-        match = re.search(pattern, llm_code, re.DOTALL)
+        match = re.search(pattern, code_search_area, re.DOTALL)
         if match:
             code = match.group(1).strip()
         else:
             # Heuristic: If no markdown, try to find the start of the function definition
-            if "def solver" in llm_code:
-                lines = llm_code.splitlines()
+            if "def solver" in code_search_area:
+                lines = code_search_area.splitlines()
                 start_idx = -1
                 for i, line in enumerate(lines):
                     if "def solver" in line:

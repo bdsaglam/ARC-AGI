@@ -23,7 +23,12 @@ def run_step_1(state, models):
     # prompt_step1 = build_prompt(state.task.train, state.test_example)
     prompt_codegen = build_prompt_codegen(state.task.train, test_examples=state.task.test, version=state.codegen_prompt)
 
-    exec_mode = "v3" if state.codegen_prompt == "v3" else "code"
+    if state.codegen_prompt == "v3":
+        exec_mode = "v3"
+    elif state.codegen_prompt == "v4":
+        exec_mode = "v4"
+    else:
+        exec_mode = "code"
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         # f1 = executor.submit(run_models_in_parallel, models, state.run_id_counts, "step_1", prompt_step1, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, completion_message="Broad search", use_background=state.openai_background)
