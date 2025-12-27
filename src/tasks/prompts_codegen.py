@@ -42,7 +42,10 @@ def build_prompt_codegen_v1b(train_examples: List[Example], test_examples: List[
         lines.append("")
 
     lines.append("Only output the python code for the solver() function")
-    return "\n".join(lines)
+    prompt = "\n".join(lines)
+    import sys
+    print(f"DEBUG: V1B PROMPT:\n{prompt}\n--- END PROMPT ---", file=sys.stderr)
+    return prompt
 
 def build_prompt_codegen_v2(train_examples: List[Example]) -> str:
     lines = [
@@ -215,7 +218,10 @@ def build_prompt_codegen_v2b(train_examples: List[Example], test_examples: List[
         lines.append(str(ex.input))
         lines.append("")
 
-    return "\n".join(lines)
+    prompt = "\n".join(lines)
+    import sys
+    print(f"DEBUG: V2B PROMPT:\n{prompt}\n--- END PROMPT ---", file=sys.stderr)
+    return prompt
 
 def _format_v3_data(train_examples: List[Example], test_examples: List[Example]) -> str:
     lines = [
