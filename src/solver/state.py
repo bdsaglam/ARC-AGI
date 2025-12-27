@@ -85,9 +85,9 @@ class SolverState:
                 self.total_cost += res.get("cost", 0)
                 
                 # Usage Stats Aggregation
-                input_tokens = res.get("input_tokens", 0)
-                cached_tokens = res.get("cached_tokens", 0)
-                output_tokens = res.get("output_tokens", 0)
+                input_tokens = res.get("input_tokens") or 0
+                cached_tokens = res.get("cached_tokens") or 0
+                output_tokens = res.get("output_tokens") or 0
                 
                 self.usage_stats["prompt_tokens"] += (input_tokens + cached_tokens)
                 self.usage_stats["completion_tokens"] += output_tokens

@@ -12,7 +12,7 @@ from src.solver.pipelines import run_objects_pipeline_variant
 
 def run_step_1(state, models):
     state.set_status(step=1, phase="Shallow search")
-    codegen_models = ["claude-opus-4.5-thinking-4000"]
+    codegen_models = models
     total_models = len(codegen_models)
     
     print(f"Broad search: {total_models} left")

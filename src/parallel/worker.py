@@ -185,7 +185,7 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
             # Both code mode and v3 use the execution engine
             try:
                 # test_example.input is a list of lists
-                predicted_grid, verification_details = extract_and_run_solver(grid_text, test_example.input, train_examples=train_examples)
+                predicted_grid, verification_details = extract_and_run_solver(grid_text, test_example.input, train_examples=train_examples, task_id=task_id, test_index=test_index)
             except Exception as e:
                 if verbose:
                     print(f"{prefix} Code Execution Failed: {e}")

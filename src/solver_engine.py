@@ -6,7 +6,7 @@ from src.solver.state import SolverState
 from src.solver.steps import run_step_1, run_step_3, run_step_5, check_is_solved
 
 # Re-export run_solver_mode for backward compatibility if imported elsewhere
-def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False, force_step_2: bool = False, judge_model: str = "gemini-3-high", old_pick_solution: bool = False, task_status=None, openai_background: bool = True, enable_step_3_and_4: bool = False, judge_consistency_enable: bool = False, codegen_prompt: str = "v1b"):
+def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False, force_step_2: bool = False, judge_model: str = "gemini-3-high", old_pick_solution: bool = False, task_status=None, openai_background: bool = True, enable_step_3_and_4: bool = False, judge_consistency_enable: bool = False, codegen_prompt: str = "v1b", codegen_models: str = "gpt-5.2-xhigh"):
     
     # Initialize State
     try:
@@ -16,15 +16,21 @@ def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: boo
         raise e
 
     try:
+        # Determine codegen models
+        if codegen_models:
+             models_step1 = [m.strip() for m in codegen_models.split(",")]
+        else:
+             models_step1 = ["gpt-5.2-xhigh"]
+
         if is_testing:
             # Models for --solver-testing
-            models_step1 = ["claude-opus-4.5-thinking-4000", "gpt-5.1-none"]
+            # models_step1 = ["claude-opus-4.5-thinking-4000", "gpt-5.1-none"] # Overridden by codegen_models argument
             models_step3 = ["claude-sonnet-4.5-no-thinking", "gpt-5.1-low"]
             models_step5 = ["claude-opus-4.5-no-thinking", "gpt-5.1-none", "gpt-5.1-low"]
             hint_generation_model = "gpt-5.1-low"
         else:
             # Models for --solver
-            models_step1 = ["gemini-3-high"] * 2 + ["claude-opus-4.5-thinking-60000"] * 2 + ["gpt-5.2-xhigh"] * 6
+            # models_step1 = ["gemini-3-high"] * 2 + ["claude-opus-4.5-thinking-60000"] * 2 + ["gpt-5.2-xhigh"] * 6
             models_step3 = ["claude-opus-4.5-thinking-60000", "gemini-3-high", "gemini-3-high", "gpt-5.2-xhigh", "gpt-5.2-xhigh"]
             models_step5 = ["gemini-3-high"] * 1 + ["claude-opus-4.5-thinking-60000"] * 1 + ["gpt-5.2-xhigh"] * 3
             hint_generation_model = "gpt-5.2-xhigh"

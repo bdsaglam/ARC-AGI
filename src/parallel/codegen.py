@@ -3,7 +3,7 @@ import sys
 import copy
 import traceback
 
-def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples: list = None) -> tuple[list | None, dict | None]:
+def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples: list = None, task_id: str = None, test_index: int = None) -> tuple[list | None, dict | None]:
     """
     Extracts Python code from LLM response, executes it, calls solver(), 
     and returns the predicted grid.
@@ -13,6 +13,9 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
     """
     verification_log = {"train_results": [], "status": "UNKNOWN"}
     
+    # Prefix for logs
+    log_prefix = f"[{task_id}:{test_index}]" if task_id else "[Unknown Task]"
+
     try:
         code = llm_code
         # Try to extract from markdown block
@@ -74,19 +77,19 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
             # Execute the code definition using local_scope as globals
             exec(code, local_scope)
         except Exception as e:
-            print(f"DEBUG: Code Definition FAILED: {e}", file=sys.stderr)
+            print(f"DEBUG {log_prefix}: Code Definition FAILED: {e}", file=sys.stderr)
             verification_log["status"] = "FAIL_DEFINE"
             verification_log["error"] = str(e)
             return None, verification_log
             
         if "solver" not in local_scope:
-            print("DEBUG: Solver function 'solver' not found in generated code.", file=sys.stderr)
+            print(f"DEBUG {log_prefix}: Solver function 'solver' not found in generated code.", file=sys.stderr)
             verification_log["status"] = "FAIL_NO_SOLVER"
             return None, verification_log
             
         solver_func = local_scope["solver"]
         if not callable(solver_func):
-            print("DEBUG: 'solver' was defined but is not callable.", file=sys.stderr)
+            print(f"DEBUG {log_prefix}: 'solver' was defined but is not callable.", file=sys.stderr)
             verification_log["status"] = "FAIL_SOLVER_NOT_CALLABLE"
             return None, verification_log
 
@@ -116,7 +119,7 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
                         verification_log["train_results"].append(entry)
                         
                 except Exception as e:
-                    print(f"DEBUG: Solver CRASHED on Train Example {i+1}: {e}", file=sys.stderr)
+                    print(f"DEBUG {log_prefix}: Solver CRASHED on Train Example {i+1}: {e}", file=sys.stderr)
                     traceback.print_exc(file=sys.stderr)
                     entry["status"] = "CRASH"
                     entry["error"] = str(e)
@@ -135,11 +138,11 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
                  if len(result) == 0:
                      return result, verification_log
             
-            print("DEBUG: Solver returned invalid type (not list of lists).", file=sys.stderr)
+            print(f"DEBUG {log_prefix}: Solver returned invalid type (not list of lists).", file=sys.stderr)
             verification_log["test_run_error"] = "Result validation failed (not list of lists)"
             return None, verification_log
         except Exception as e:
-            print(f"DEBUG: Solver CRASHED on Test Input: {e}", file=sys.stderr)
+            print(f"DEBUG {log_prefix}: Solver CRASHED on Test Input: {e}", file=sys.stderr)
             verification_log["test_run_error"] = f"Test execution failed: {str(e)}"
             return None, verification_log
 
