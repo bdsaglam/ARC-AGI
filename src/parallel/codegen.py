@@ -66,23 +66,46 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
     try:
         code = llm_code
         
-        # v4: Look for ### FINAL SOLUTION ### marker
+        # Multi-stage extraction for robustness
+        code_search_area = None
+        
+        # Stage 1: Explicit marker search (Preferred for v4)
         if "### FINAL SOLUTION ###" in llm_code:
             parts = llm_code.split("### FINAL SOLUTION ###")
             # Take the part after the marker
             code_search_area = parts[-1]
-        else:
-            code_search_area = llm_code
-
-        # Try to extract from markdown block
+        
+        # Stage 2: Fallback - Search all markdown blocks in reverse for 'def solver'
         pattern = r"```python(.*?)```"
-        match = re.search(pattern, code_search_area, re.DOTALL)
-        if match:
-            code = match.group(1).strip()
-        else:
-            # Heuristic: If no markdown, try to find the start of the function definition
-            if "def solver" in code_search_area:
-                lines = code_search_area.splitlines()
+        if not code_search_area:
+            blocks = re.findall(pattern, llm_code, re.DOTALL)
+            for block in reversed(blocks):
+                if "def solver" in block:
+                    code = block.strip()
+                    code_search_area = "FOUND_IN_BLOCK"
+                    break
+        
+        # Stage 3: If we have a search area (from marker or default), extract the block
+        if code_search_area and code_search_area != "FOUND_IN_BLOCK":
+            match = re.search(pattern, code_search_area, re.DOTALL)
+            if match:
+                code = match.group(1).strip()
+            else:
+                # Heuristic: If marker exists but no markdown after it, or no marker and no markdown found
+                if "def solver" in code_search_area:
+                    lines = code_search_area.splitlines()
+                    start_idx = -1
+                    for i, line in enumerate(lines):
+                        if "def solver" in line:
+                            start_idx = i
+                            break
+                    if start_idx != -1:
+                        code = "\n".join(lines[start_idx:])
+        
+        # Stage 4: Ultimate fallback - search entire raw response if nothing found yet
+        if not code_search_area:
+            if "def solver" in llm_code:
+                lines = llm_code.splitlines()
                 start_idx = -1
                 for i, line in enumerate(lines):
                     if "def solver" in line:
@@ -109,8 +132,14 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
         except ImportError:
             scipy = None
 
+        try:
+            import cv2
+        except ImportError:
+            cv2 = None
+
         local_scope = {
             "np": np,
+            "cv2": cv2,
             "scipy": scipy,
             "Counter": Counter,
             "deque": deque,
@@ -164,9 +193,10 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
                     "actual": None
                 }
                 try:
-                    input_copy = copy.deepcopy(ex.input)
+                    # Provide input as a NumPy array
+                    input_np = np.array(ex.input) if np is not None else ex.input
                     with execution_timeout(10):
-                        raw_res = solver_func(input_copy)
+                        raw_res = solver_func(input_np)
                     res = sanitize_output(raw_res)
                     entry["actual"] = res
                     
@@ -219,9 +249,10 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
                         }
                         
                         try:
-                            # Run solver on augmented input
+                            # Run solver on augmented input as NumPy array
+                            input_aug_np = np.array(pair["input"]) if np is not None else pair["input"]
                             with execution_timeout(10):
-                                raw_res_aug = solver_func(pair["input"])
+                                raw_res_aug = solver_func(input_aug_np)
                             res_aug = sanitize_output(raw_res_aug)
                             
                             if res_aug == pair["output"]:
@@ -253,8 +284,10 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
                 verification_log["augmented_error"] = str(e)
             
         try:
+            # Provide final test input as NumPy array
+            test_input_np = np.array(test_input_grid) if np is not None else test_input_grid
             with execution_timeout(10):
-                raw_result = solver_func(test_input_grid)
+                raw_result = solver_func(test_input_np)
             result = sanitize_output(raw_result)
             
             if isinstance(result, list):
