@@ -47,23 +47,33 @@ def execute_model_call(
     acquire_rate_limit_token(model_name, verbose, prefix)
 
     start_ts = time.perf_counter()
-    response = call_model(
-        openai_client=client_config['openai_client'],
-        anthropic_client=client_config['anthropic_client'],
-        google_keys=client_config['google_keys'],
-        prompt=prompt,
-        model_arg=model_name,
-        image_path=image_path,
-        return_strategy=False,
-        verbose=verbose,
-        task_id=task_id,
-        test_index=test_index,
-        step_name=step_name,
-        use_background=use_background,
-        run_timestamp=run_timestamp,
-        timing_tracker=context.timings,
-        enable_code_execution=(execution_mode == "v4")
-    )
+    
+    # Debug ID for tracking hangs
+    llm_exec_id = f"LLM:{task_id}:{test_index}:{model_name}:{time.time():.6f}"
+    import sys
+    print(f"DEBUG_LLM: START {llm_exec_id}", file=sys.stderr)
+    
+    try:
+        response = call_model(
+            openai_client=client_config['openai_client'],
+            anthropic_client=client_config['anthropic_client'],
+            google_keys=client_config['google_keys'],
+            prompt=prompt,
+            model_arg=model_name,
+            image_path=image_path,
+            return_strategy=False,
+            verbose=verbose,
+            task_id=task_id,
+            test_index=test_index,
+            step_name=step_name,
+            use_background=use_background,
+            run_timestamp=run_timestamp,
+            timing_tracker=context.timings,
+            enable_code_execution=(execution_mode == "v4")
+        )
+    finally:
+        print(f"DEBUG_LLM: FINISH {llm_exec_id}", file=sys.stderr)
+
     context.duration += time.perf_counter() - start_ts
     
     # Update context metrics

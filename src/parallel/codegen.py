@@ -109,7 +109,12 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
                 }
                 
                 # Execute in Sandbox
-                success, result, logs = run_untrusted_code(code, ex.input, timeout_s=10.0)
+                exec_id = f"{task_id}:{test_index}:TRAIN:{i}:{time.time():.6f}"
+                print(f"DEBUG_EXEC: START {exec_id}", file=sys.stderr)
+                try:
+                    success, result, logs = run_untrusted_code(code, ex.input, timeout_s=10.0)
+                finally:
+                    print(f"DEBUG_EXEC: FINISH {exec_id}", file=sys.stderr)
                 
                 if not success:
                     print(f"DEBUG {log_prefix}: Solver FAILED on Train Example {i+1}: {result}\nDetails:\n{logs}", file=sys.stderr)
@@ -151,7 +156,12 @@ def extract_and_run_solver(llm_code: str, test_input_grid: list, train_examples:
             # but in production you'd loop run_untrusted_code similarly.
             
         # Test Execution
-        success, result, logs = run_untrusted_code(code, test_input_grid, timeout_s=10.0)
+        exec_id_test = f"{task_id}:{test_index}:TEST:{time.time():.6f}"
+        print(f"DEBUG_EXEC: START {exec_id_test}", file=sys.stderr)
+        try:
+            success, result, logs = run_untrusted_code(code, test_input_grid, timeout_s=10.0)
+        finally:
+            print(f"DEBUG_EXEC: FINISH {exec_id_test}", file=sys.stderr)
         
         if success:
             if isinstance(result, list):

@@ -108,6 +108,7 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
                     judge_consistency_enable=args.judge_consistency_enable,
                     codegen_prompt=args.codegen_prompt,
                     codegen_models=args.codegen_models,
+                    step1_models=args.step1_models,
                     logs_directory=args.logs_directory
                 )
             except Exception as e:
