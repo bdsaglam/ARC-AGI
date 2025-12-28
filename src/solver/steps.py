@@ -10,17 +10,33 @@ from src.parallel import run_models_in_parallel
 from src.selection import is_solved
 from src.solver.pipelines import run_objects_pipeline_variant
 
-def run_step_1(state, standard_models, codegen_models):
+def run_step_1(state, standard_models, codegen_params):
     state.set_status(step=1, phase="Shallow search")
     
     n_std = len(standard_models)
     
-    # Define Codegen Configuration explicitly as requested
-    codegen_jobs = [
-        {"models": ["gpt-5.2-low"], "version": "v1b", "exec_mode": "code"},
-        {"models": ["gpt-5.2-low"], "version": "v4", "exec_mode": "v4"},
-        {"models": ["gemini-3-low"], "version": "v4", "exec_mode": "v4"},
-    ]
+    # Parse Codegen Configuration from params string
+    # Format: "model=version,model=version"
+    codegen_jobs = []
+    if codegen_params:
+        try:
+            for item in codegen_params.split(","):
+                if "=" in item:
+                    model, version = item.strip().split("=", 1)
+                    model = model.strip()
+                    version = version.strip()
+                    # Determine execution mode: v4 enables python execution in LLM, others use local sandbox
+                    exec_mode = "v4" if version == "v4" else "code"
+                    
+                    codegen_jobs.append({
+                        "models": [model],
+                        "version": version,
+                        "exec_mode": exec_mode
+                    })
+        except Exception as e:
+            print(f"Error parsing codegen_params '{codegen_params}': {e}", file=sys.stderr)
+            # Fallback to safe default or empty? Let's fallback to empty to avoid crashing loop
+            codegen_jobs = []
     
     n_code = sum(len(job["models"]) for job in codegen_jobs)
     total_models = n_std + n_code
