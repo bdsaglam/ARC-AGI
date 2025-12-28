@@ -1,12 +1,16 @@
 import sys
 import time
+import signal
+import os
 from pathlib import Path
 from src.solver_engine import run_solver_mode
 from src.logging import PrefixedStdout
 from src.parallel import set_rate_limit_scaling
 from src.llm_utils import set_retries_enabled
 
-
+def _hard_timeout_handler(signum, frame):
+    print(f"\n!!! CRITICAL WATCHDOG TIMEOUT !!!\nProcess {os.getpid()} exceeded global time limit. Killing.", file=sys.stderr)
+    os._exit(1) # Hard kill process, skipping cleanup handlers
 
 def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rate_limit_scale: float = 1.0, answer_path: Path = None, status_counters=None):
     if status_counters:
@@ -14,6 +18,10 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
         with lock:
             running.value += 1
             remaining.value -= 1
+
+    # Install Watchdog (10 minutes hard limit per task)
+    old_handler = signal.signal(signal.SIGALRM, _hard_timeout_handler)
+    signal.alarm(600) 
 
     try:
         # Propagate settings to worker process
@@ -107,6 +115,10 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
         
         return task_id, test_index, predictions
     finally:
+        # Disable Watchdog
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)
+
         if status_counters:
             running, remaining, finished, lock = status_counters
             with lock:

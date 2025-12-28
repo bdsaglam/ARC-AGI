@@ -296,7 +296,7 @@ def build_prompt_codegen_v3_stage2(train_examples: List[Example], test_examples:
     ]
     return "\n".join(lines)
 
-def build_prompt_codegen_v4(train_examples: List[Example], test_examples: List[Example]) -> str:
+def build_prompt_codegen_v4(train_examples: List[Example], test_examples: List[Example], model_name: str = None) -> str:
     lines = [
         "[ARC TASK DATA START]",
         ""
@@ -318,59 +318,96 @@ def build_prompt_codegen_v4(train_examples: List[Example], test_examples: List[E
         lines.append(_format_grid(ex.input))
         lines.append("")
     
-    lines.extend([
-        "[ARC TASK DATA END]",
-        "",
-        "*** INSTRUCTIONS: SCIENTIFIC VERIFICATION PROTOCOL ***",
-        "",
-        "You are an expert ARC-AGI Solver Architect equipped with a **python tool**.",
-        "Your goal is to write a final, robust `solver(input_grid)` function.",
-        "The `input_grid` provided to `solver` will be a **2D NumPy array**.",
-        "You are provided with **Solved Training Pairs** (to derive the rule) and **Unlabeled Probe Inputs** (to test generalizability).",
-        "",
-        "**CRITICAL RULE:** Do NOT guess. Do NOT rely on visual intuition alone. You must PROVE your solution works using the tool.",
-        "",
-        "### PHASE 1: EXPERIMENTATION (Mandatory Tool Usage)",
-        "Before answering, you must use the python tool to perform this cycle:",
-        "",
-        "1.  **Load Data**: The python environment starts empty. Write a script to define:",
-        "    *   `train_inputs` and `train_outputs` (from the Solved Examples, converted to **numpy arrays**).",
-        "    *   `probe_inputs` (from the Input-Only Data, converted to **numpy arrays**).",
-        "",
-        "2.  **Analyze**: Use numpy and cv2 to inspect ALL grids (training + probes). ",
-        "    *   *Check the Probes*: Do they have different sizes? Do they introduce new colors? ",
-        "    *   Ensure your rule does not rely on assumptions that the Probes violate.",
-        "",
-        "3.  **Prototype & Verify (The Loop)**:",
-        "    *   Draft a candidate `solver` function inside the tool.",
-        "    *   **Test 1 (Accuracy)**: Run the function on ALL `train_inputs` and assert that the result matches `train_outputs` EXACTLY.",
-        "    *   **Test 2 (Generalization)**: Run the function on ALL `probe_inputs`. ",
-        "        *   Since you don't have the answers, you cannot check accuracy. ",
-        "        *   INSTEAD, CHECK FOR CRASHES. Ensure the function runs without error (e.g., no `IndexError`, `ValueError`) and returns a valid grid.",
-        "    *   **Refine**: If any test fails, use `print()` to see the error/diff, rewrite the function, and run the cycle again.",
-        "    *   Repeat until your python script prints \"ALL TRAINING PASSED & PROBES VALID\".",
-        "",
-        "### PHASE 2: FINAL OUTPUT",
-        "Once (and ONLY once) you have a valid python script that has passed the verification loop in the logs:",
-        "",
-        "1.  Output the final, standalone `solver(input_grid)` function.",
-        "2.  The code must be self-contained (import numpy as np, cv2 inside).",
-        "3.  **Do not include the test harness or data loading** in the final block. Just the solver function.",
-        "4.  **CRITICAL**: You MUST copy your verified solver into a final block preceded by exactly this label: `### FINAL SOLUTION ###`",
-        "5.  Your response must conclude with this final block. Do not end with tool output or partial analysis.",
-        "",
-        "Format:",
-        "### FINAL SOLUTION ###",
-        "```python",
-        "import numpy as np",
-        "import cv2",
-        "",
-        "def solver(input_grid):",
-        "    # input_grid is a 2D numpy array",
-        "    # ...",
-        "```"
-    ])
-    return "\n".join(lines)
+    lines.append("[ARC TASK DATA END]")
+    lines.append("")
+
+    # OpenAI / GPT Branch (Constraint-Oriented to avoid "Invalid Prompt" / Hidden CoT violation)
+    if model_name and "gpt" in model_name.lower():
+        lines.extend([
+            "*** TOOL USE & VERIFICATION REQUIREMENTS ***",
+            "",
+            "You are an expert ARC-AGI Solver Architect equipped with a **python tool** (Code Interpreter).",
+            "Your goal is to write a final, robust `solver(input_grid)` function.",
+            "The `input_grid` provided to `solver` will be a **2D NumPy array**.",
+            "",
+            "GOAL:",
+            "Synthesize a robust Python function `solver(input_grid)` that correctly transforms input grids to output grids for the given ARC task.",
+            "",
+            "VERIFICATION CONSTRAINTS (MANDATORY):",
+            "1. **Verification Standard:** You are required to verify your solution with the tool before submitting the final answer. The Python code you output must have been executed in the tool and confirmed to successfully match all `train_inputs` to `train_outputs` exactly.",
+            "2. **Generalization Check:** Use the Probe Inputs to ensure your logic is robust and does not crash on different grid sizes or color distributions found in the task family.",
+            "3. **Error Handling:** If your internal verification fails or the code crashes, you must correct the logic and re-verify until the code passes all constraints.",
+            "4. **Final Output:** Your response must conclude with the final, standalone, and verified `solver` function. This block MUST be preceded by exactly this label: `### FINAL SOLUTION ###`",
+            "",
+            "Format:",
+            "### FINAL SOLUTION ###",
+            "```python",
+            "import numpy as np",
+            "import cv2",
+            "",
+            "def solver(input_grid):",
+            "    # input_grid is a 2D numpy array",
+            "    # ...",
+            "```"
+        ])
+    # Default Branch (Process-Oriented for Gemini/Claude etc.)
+    else:
+        lines.extend([
+            "*** INSTRUCTIONS: SCIENTIFIC VERIFICATION PROTOCOL ***",
+            "",
+            "You are an expert ARC-AGI Solver Architect equipped with a **python tool**.",
+            "Your goal is to write a final, robust `solver(input_grid)` function.",
+            "The `input_grid` provided to `solver` will be a **2D NumPy array**.",
+            "You are provided with **Solved Training Pairs** (to derive the rule) and **Unlabeled Probe Inputs** (to test generalizability).",
+            "",
+            "**CRITICAL RULE:** Do NOT guess. Do NOT rely on visual intuition alone. You must PROVE your solution works using the tool.",
+            "",
+            "### PHASE 1: EXPERIMENTATION (Mandatory Tool Usage)",
+            "Before answering, you must use the python tool to perform this cycle:",
+            "",
+            "1.  **Load Data**: The python environment starts empty. Write a script to define:",
+            "    *   `train_inputs` and `train_outputs` (from the Solved Examples, converted to **numpy arrays**).",
+            "    *   `probe_inputs` (from the Input-Only Data, converted to **numpy arrays**).",
+            "",
+            "2.  **Analyze**: Use numpy and cv2 to inspect ALL grids (training + probes). ",
+            "    *   *Check the Probes*: Do they have different sizes? Do they introduce new colors? ",
+            "    *   Ensure your rule does not rely on assumptions that the Probes violate.",
+            "",
+            "3.  **Prototype & Verify (The Loop)**:",
+            "    *   Draft a candidate `solver` function inside the tool.",
+            "    *   **Test 1 (Accuracy)**: Run the function on ALL `train_inputs` and assert that the result matches `train_outputs` EXACTLY.",
+            "    *   **Test 2 (Generalization)**: Run the function on ALL `probe_inputs`. ",
+            "        *   Since you don't have the answers, you cannot check accuracy. ",
+            "        *   INSTEAD, CHECK FOR CRASHES. Ensure the function runs without error (e.g., no `IndexError`, `ValueError`) and returns a valid grid.",
+            "    *   **Refine**: If any test fails, use `print()` to see the error/diff, rewrite the function, and run the cycle again.",
+            "    *   Repeat until your python script prints \"ALL TRAINING PASSED & PROBES VALID\".",
+            "",
+            "### PHASE 2: FINAL OUTPUT",
+            "Once (and ONLY once) you have a valid python script that has passed the verification loop in the logs:",
+            "",
+            "1.  Output the final, standalone `solver(input_grid)` function.",
+            "2.  The code must be self-contained (import numpy as np, cv2 inside).",
+            "3.  **Do not include the test harness or data loading** in the final block. Just the solver function.",
+            "4.  **CRITICAL**: You MUST copy your verified solver into a final block preceded by exactly this label: `### FINAL SOLUTION ###`",
+            "5.  Your response must conclude with this final block. Do not end with tool output or partial analysis.",
+            "",
+            "Format:",
+            "### FINAL SOLUTION ###",
+            "```python",
+            "import numpy as np",
+            "import cv2",
+            "",
+            "def solver(input_grid):",
+            "    # input_grid is a 2D numpy array",
+            "    # ...",
+            "```"
+        ])
+    
+    final_prompt = "\n".join(lines)
+    import sys
+    sys.stderr.write(f"\n--- DEBUG: V4 PROMPT (Model: {model_name}) ---\n{final_prompt}\n--- END DEBUG ---\n")
+    sys.stderr.flush()
+    return final_prompt
 
 def build_prompt_codegen(train_examples: List[Example], test_examples: List[Example] = None, version: str = "v2", model_name: str = None) -> str:
     if version == "v1":
@@ -386,7 +423,7 @@ def build_prompt_codegen(train_examples: List[Example], test_examples: List[Exam
     elif version == "v4":
         if test_examples is None:
              raise ValueError("V4 prompt requires test_examples")
-        return build_prompt_codegen_v4(train_examples, test_examples)
+        return build_prompt_codegen_v4(train_examples, test_examples, model_name=model_name)
     elif version == "v3":
         if test_examples is None:
              raise ValueError("V3 prompt requires test_examples")
