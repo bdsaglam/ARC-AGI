@@ -274,7 +274,7 @@ Successful solution, gpt-5.2-low:
     ]
 ```
 
-Gemini logs more, including the thoughts between the code calls, and the results from the code calls. Below is an example from gemini-3-low:
+Gemini logs more, including the thoughts between the code calls, and the results from the code calls. Below is an example from gemini-3-low, where it passes all training examples and generates and answer on the test input, but that answer is actually wrong:
 ```
     "detailed_logs": [
       {
