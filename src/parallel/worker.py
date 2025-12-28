@@ -30,6 +30,7 @@ def run_single_model(model_name, run_id, prompt, test_example, openai_client, an
     cached_tokens = 0
     timings = []
     v3_details = None
+    verification_details = None
 
     try:
         # Acquire rate limit token

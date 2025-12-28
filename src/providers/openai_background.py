@@ -82,7 +82,7 @@ class OpenAIBackgroundSolver:
         response.model_name = f"claude-opus-4.5-{model_suffix}"
         return response
 
-    def solve(self, prompt: str, image_path: Optional[str] = None) -> ModelResponse:
+    def solve(self, prompt: str, image_path: Optional[str] = None, enable_code_execution: bool = False) -> ModelResponse:
         start_attempt_ts = time.perf_counter()
 
         try:
@@ -99,6 +99,15 @@ class OpenAIBackgroundSolver:
             if self.runner.reasoning_effort != "none":
                 kwargs["reasoning"] = {"effort": self.runner.reasoning_effort}
             
+            if enable_code_execution:
+                kwargs["tools"] = [{
+                    "type": "code_interpreter",
+                    "container": {"type": "auto"}
+                }]
+                kwargs["tool_choice"] = "auto"
+                kwargs["max_tool_calls"] = 100
+                # kwargs["include"] = ["code_interpreter_call.outputs"] # Potential cause of server_error
+
             if self.runner.last_failed_job_id:
                 kwargs["previous_response_id"] = self.runner.last_failed_job_id
 
@@ -150,6 +159,7 @@ class OpenAIBackgroundSolver:
                 # Retrieve Status
                 def _retrieve():
                     try:
+                        # Ensure we request outputs during retrieval as well
                         return self.client.responses.retrieve(job_id)
                     except Exception as e:
                         _map_openai_exception(e, self.runner.full_model_name)
@@ -181,14 +191,64 @@ class OpenAIBackgroundSolver:
                 # Terminal States
                 if job.status == "completed":
                     text_output = ""
-                    if hasattr(job, "output_text") and job.output_text:
-                        text_output = job.output_text
-                    elif hasattr(job, "output"):
+                    detailed_logs = []
+
+                    if hasattr(job, "output") and job.output:
                         for item in job.output:
-                            if item.type == "message":
-                                for content_part in item.content:
-                                    if content_part.type == "output_text":
-                                        text_output += content_part.text
+                            # Use model_dump for safe access
+                            d = item.model_dump() if hasattr(item, "model_dump") else dict(item)
+                            
+                            item_type = d.get("type")
+
+                            if item_type == "message":
+                                content = d.get("content") or []
+                                for content_part in content:
+                                    if content_part.get("type") == "output_text":
+                                        txt = content_part.get("text", "")
+                                        text_output += txt
+                                        detailed_logs.append({"type": "text", "content": txt})
+                            
+                            elif item_type == "reasoning":
+                                # Capture Thoughts
+                                thought_content = ""
+                                content = d.get("content") or []
+                                for part in content:
+                                    if part.get("type") in ("reasoning_text", "text"):
+                                        thought_content += part.get("text", "")
+                                
+                                if thought_content:
+                                    detailed_logs.append({"type": "thought", "content": thought_content})
+                                elif d.get("reasoning"): 
+                                    detailed_logs.append({"type": "thought", "content": str(d.get("reasoning"))})
+
+                            elif item_type == "code_interpreter_call":
+                                # Capture Code - use "code" or "input"
+                                code = d.get("code") or d.get("input") or ""
+                                
+                                if code:
+                                    detailed_logs.append({"type": "code", "code": code, "language": "python"})
+                                
+                                # Capture Outputs (logs)
+                                outputs = d.get("outputs") or d.get("results") or []
+                                    
+                                if outputs:
+                                    for output in outputs:
+                                        out_type = output.get("type")
+                                        if out_type == "logs":
+                                            detailed_logs.append({
+                                                "type": "execution_result",
+                                                "output": output.get("logs"),
+                                                "outcome": "completed"
+                                            })
+                                        elif out_type == "image":
+                                             detailed_logs.append({
+                                                "type": "execution_result",
+                                                "output": "<image_data>",
+                                                "outcome": "image_generated"
+                                            })
+                    
+                    if not text_output and hasattr(job, "output_text") and job.output_text:
+                        text_output = job.output_text
                     
                     usage = getattr(job, "usage", None)
                     
@@ -206,7 +266,8 @@ class OpenAIBackgroundSolver:
                         prompt_tokens=getattr(usage, "input_tokens", 0) if usage else 0,
                         cached_tokens=0,
                         completion_tokens=getattr(usage, "output_tokens", 0) if usage else 0,
-                        strategy=None
+                        strategy=None,
+                        detailed_logs=detailed_logs
                     )
                 
                 elif job.status == "failed":
