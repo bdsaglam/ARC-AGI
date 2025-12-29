@@ -37,7 +37,7 @@ def run_with_retry(
         max_retries = 1
 
     # Fixed delays for the 2 retries
-    retry_delays = [60, 300]
+    retry_delays = [300]
     
     # Construct log prefix
     log_prefix = ""
