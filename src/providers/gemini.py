@@ -10,7 +10,7 @@ from google import genai
 from google.genai import types
 from google.api_core import exceptions as google_exceptions
 
-from src.config import get_api_keys, get_http_client
+from src.config import get_api_keys, get_http_client, KeepAliveTransport
 from src.types import ModelConfig, ModelResponse
 from src.llm_utils import run_with_retry, orchestrate_two_stage
 from src.logging import get_logger
@@ -49,7 +49,7 @@ def call_gemini(
     # Instantiate a local client for this call (thread-safe) using shared configuration
     http_client = get_http_client(
         timeout=3600.0,
-        transport=httpx.HTTPTransport(retries=3),
+        transport=KeepAliveTransport(retries=3),
         limits=httpx.Limits(keepalive_expiry=3600)
     )
     
