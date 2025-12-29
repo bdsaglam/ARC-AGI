@@ -92,6 +92,16 @@ def call_gemini(
                 # Enforce hard wall-clock timeout (slightly larger than socket timeout)
                 return future.result(timeout=3660)
         except concurrent.futures.TimeoutError as e:
+            # LOUD DEBUG LOGGING
+            err_msg = (
+                f"\n{'!'*50}\n"
+                f"!!! GEMINI HARD TIMEOUT TRIGGERED (3660s) !!!\n"
+                f"!!! Key Index: {key_index} | Model: {model}\n"
+                f"!!! The call hung indefinitely. Killing and retrying.\n"
+                f"{'!'*50}\n"
+            )
+            print(err_msg, file=sys.stderr)
+            sys.stderr.flush()
             raise RetryableProviderError(f"Gemini Hard Wall-Clock Timeout (Key #{key_index}, Model: {model}): Call exceeded 3660s") from e
         except Exception as e:
             # 1. Known SDK Retryables
