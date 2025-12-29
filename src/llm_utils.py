@@ -20,7 +20,7 @@ def get_retries_enabled() -> bool:
 
 def run_with_retry(
     func: Callable[[], Any],
-    max_retries: int = 3,
+    max_retries: int = 2,
     task_id: str = None,
     test_index: int = None,
     run_timestamp: str = None,
@@ -30,8 +30,8 @@ def run_with_retry(
 ) -> Any:
     """
     Generic retry loop helper using RetryableProviderError.
-    Retries: 2 times (3 total attempts).
-    Sleeps: 60s, 300s.
+    Retries: 1 time (2 total attempts).
+    Sleeps: 300s.
     """
     if not _RETRIES_ENABLED:
         max_retries = 1
