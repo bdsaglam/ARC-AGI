@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from src.audit_prompts import build_logic_prompt, build_consistency_prompt, build_duo_pick_prompt
 from src.judges import run_judge, run_duo_pick_judge
 
-def pick_solution_v2(candidates_object, reasoning_store, task, test_index, openai_client, anthropic_client, google_keys, judge_model="gpt-5.2-xhigh", verbose: int = 0, openai_background: bool = False, judge_consistency_enable: bool = False, judge_duo_pick_enable: bool = False, total_attempts: int = 0):
+def pick_solution_v2(candidates_object, reasoning_store, task, test_index, openai_client, anthropic_client, google_keys, judge_model="gpt-5.2-xhigh", verbose: int = 0, openai_background: bool = False, judge_consistency_enable: bool = False, judge_duo_pick_enable: bool = True, total_attempts: int = 0):
     """
     Advanced solution picker using LLM Judges.
     - If judge_duo_pick_enable: Runs a Meta-Conclusion judge to pick top 2 solutions.
