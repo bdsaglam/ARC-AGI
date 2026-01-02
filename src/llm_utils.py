@@ -112,7 +112,12 @@ def run_with_retry(
                 logger.error(f"{log_prefix}!!! UNKNOWN ERROR (after {duration:.2f}s) - RETRYING (Attempt {attempt + 1}/{max_retries}) !!!")
                 logger.error(f"{log_prefix}Error details: {e}")
             else:
-                logger.warning(f"{log_prefix}Retryable error (after {duration:.2f}s): {e}. Retrying in {sleep_time}s (Attempt {attempt + 1}/{max_retries})...")
+                # Custom concise handling for OpenAI background timeouts
+                error_str = str(e)
+                if "OpenAI Background Job" in error_str and "timed out after" in error_str:
+                    print(f"{log_prefix}Err: OpenAI Timed Out 3600s", file=sys.stdout)
+                else:
+                    logger.warning(f"{log_prefix}Retryable error (after {duration:.2f}s): {e}. Retrying in {sleep_time}s (Attempt {attempt + 1}/{max_retries})...")
             
             if timing_tracker is not None:
                 timing_tracker.append({
