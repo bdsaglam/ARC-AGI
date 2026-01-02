@@ -41,7 +41,20 @@ def run_step_1(state, standard_models, codegen_params):
     n_code = sum(len(job["models"]) for job in codegen_jobs)
     total_models = n_std + n_code
     
-    print(f"Broad search: {n_std}std + {n_code}code")
+    # Build descriptive breakdown string
+    breakdown_parts = []
+    if n_std > 0:
+        breakdown_parts.append(f"{n_std} std")
+    
+    # Group codegen by version for summary
+    version_counts = {}
+    for job in codegen_jobs:
+        v = job["version"]
+        version_counts[v] = version_counts.get(v, 0) + len(job["models"])
+    for v, count in version_counts.items():
+        breakdown_parts.append(f"{count} {v}")
+    
+    print(f"Search: {' + '.join(breakdown_parts)}")
 
     step_1_log = {}
     if state.verbose >= 1:
@@ -53,8 +66,9 @@ def run_step_1(state, standard_models, codegen_params):
         futures = []
         
         # 1. Standard Search
-        f_std = executor.submit(run_models_in_parallel, standard_models, state.run_id_counts, "step_1", prompt_step1, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, completion_message="Broad search", use_background=state.openai_background)
-        futures.append(f_std)
+        if standard_models:
+            f_std = executor.submit(run_models_in_parallel, standard_models, state.run_id_counts, "step_1", prompt_step1, state.test_example, state.openai_client, state.anthropic_client, state.google_keys, state.verbose, run_timestamp=state.run_timestamp, task_id=state.task_id, test_index=state.test_index, completion_message="Search std", use_background=state.openai_background)
+            futures.append(f_std)
 
         # 2. Codegen Jobs
         for i, job in enumerate(codegen_jobs):
@@ -75,7 +89,7 @@ def run_step_1(state, standard_models, codegen_params):
                 run_timestamp=state.run_timestamp, 
                 task_id=state.task_id, 
                 test_index=state.test_index, 
-                completion_message=f"codegen {job['version']}", 
+                completion_message=f"Search {job['version']}", 
                 use_background=state.openai_background, 
                 execution_mode=job["exec_mode"], 
                 train_examples=state.task.train, 
