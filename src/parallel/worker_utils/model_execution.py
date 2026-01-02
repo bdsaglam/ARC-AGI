@@ -51,7 +51,7 @@ def execute_model_call(
     # Debug ID for tracking hangs
     llm_exec_id = f"LLM:{task_id}:{test_index}:{model_name}:{time.time():.6f}"
     import sys
-    print(f"DEBUG_LLM: START {llm_exec_id}", file=sys.stderr)
+    # print(f"DEBUG_LLM: START {llm_exec_id}", file=sys.stderr)
     
     try:
         response = call_model(
@@ -72,7 +72,8 @@ def execute_model_call(
             enable_code_execution=(execution_mode == "v4")
         )
     finally:
-        print(f"DEBUG_LLM: FINISH {llm_exec_id}", file=sys.stderr)
+        # print(f"DEBUG_LLM: FINISH {llm_exec_id}", file=sys.stderr)
+        pass
 
     context.duration += time.perf_counter() - start_ts
     
