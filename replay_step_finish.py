@@ -297,7 +297,7 @@ def main():
         print(f"{task_id:<12} | {test_index:<5} | {cand_1_str:<35} | {cand_2_str:<35}")
 
         # 6. Output Replay Log
-        output_dir = Path("tmp_replay")
+        output_dir = Path(args.output_dir)
         output_dir.mkdir(exist_ok=True)
         outcome = ("PASS" if is_any_correct else "FAIL") if ground_truth is not None else "SUBMITTED"
         finish_log = {"candidates_object": candidates_object, "selection_details": selection_metadata, "picked_solutions": [c["grid"] for c in top_candidates], "correct_solution": ground_truth, "result": outcome}
