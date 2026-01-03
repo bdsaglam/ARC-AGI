@@ -320,6 +320,15 @@ def main():
                             "grid": grid
                         })
                     selection_metadata["selection_process"][f"attempt_{i+1}"] = f"Judge Pick {i+1}"
+                
+                # If the judge returned only 1 grid (likely because of deduplication of identical grids in src/judges.py),
+                # assume the judge intended to pick this grid for both slots.
+                if len(top_candidates) == 1:
+                    dup = top_candidates[0].copy()
+                    # Append note to label
+                    dup["score_label"] = dup["score_label"]
+                    top_candidates.append(dup)
+                    selection_metadata["selection_process"]["attempt_2"] = "Judge Pick 2 (Same as 1)"
             else:
                  # Failed
                  selection_metadata["selection_process"]["error"] = "Duo Pick Judge Failed"
