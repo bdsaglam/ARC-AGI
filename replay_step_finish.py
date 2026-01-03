@@ -11,7 +11,7 @@ sys.path.append(os.getcwd())
 
 from src.tasks import load_task
 from src.audit_prompts import build_logic_prompt, build_consistency_prompt, build_duo_pick_prompt
-from src.judges import run_judge, run_duo_pick_judge, extract_all_grids
+from src.judges import run_judge, run_duo_pick_judge
 from src.config import get_api_keys, get_http_client
 from openai import OpenAI
 from anthropic import Anthropic
@@ -281,9 +281,7 @@ def main():
             duo_data = {"prompt": prompt}
             
             # Run Judge
-            # We ignore the returned grids from run_duo_pick_judge because it deduplicates.
-            # We want to extract ALL grids, including duplicates, per user requirements.
-            _ = run_duo_pick_judge(
+            res_grids = run_duo_pick_judge(
                 prompt, 
                 args.model, 
                 openai_client, 
@@ -297,12 +295,8 @@ def main():
             selection_metadata["judges"]["duo_pick"] = duo_data
             selection_metadata["selection_process"] = {"type": "Duo Pick Judge Replay"}
 
-            if "response" in duo_data and duo_data["response"]:
-                # Extract all grids from the raw response text without deduplication
-                all_extracted_grids = extract_all_grids(duo_data["response"])
-                
-                # Take the first two grids found (or all if fewer than 2)
-                for i, grid in enumerate(all_extracted_grids[:2]):
+            if res_grids:
+                for i, grid in enumerate(res_grids):
                     # Match back to candidate
                     grid_tuple = tuple(tuple(r) for r in grid)
                     found_cand = None
@@ -328,7 +322,7 @@ def main():
                     selection_metadata["selection_process"][f"attempt_{i+1}"] = f"Judge Pick {i+1}"
             else:
                  # Failed
-                 selection_metadata["selection_process"]["error"] = "Duo Pick Judge Failed (No Response)"
+                 selection_metadata["selection_process"]["error"] = "Duo Pick Judge Failed"
 
         elif args.judge in ["logic", "consistency"]:
             prompt = None

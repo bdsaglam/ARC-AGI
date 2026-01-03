@@ -201,19 +201,17 @@ def run_duo_pick_judge(prompt, judge_model, openai_client, anthropic_client, goo
         
         grids = extract_all_grids(response_obj.text)
         
-        # We need unique grids for the final picks
-        unique_grids = []
-        for g in grids:
-            if g not in unique_grids:
-                unique_grids.append(g)
+        # We DO NOT deduplicate grids. If the judge outputted two identical grids, 
+        # it likely means it wants that grid to be both Attempt 1 and Attempt 2.
+        # See logic in replay_step_finish.py as well.
         
-        if len(unique_grids) >= 2:
-            # Take the last two distinct grids
-            result_container["picked_grids"] = unique_grids[-2:]
-            return unique_grids[-2:]
-        elif len(unique_grids) == 1:
-            result_container["picked_grids"] = unique_grids
-            return unique_grids
+        if len(grids) >= 2:
+            # Take the last two grids (judge often outputs reasoning then grids)
+            result_container["picked_grids"] = grids[-2:]
+            return grids[-2:]
+        elif len(grids) == 1:
+            result_container["picked_grids"] = grids
+            return grids
             
     except Exception as e:
         print(f"[pick_solution_v2] Duo Pick Judge Error: {e}")
