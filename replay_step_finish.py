@@ -277,12 +277,17 @@ def main():
         # 5. Result Formatting
         is_any_correct = False
         def format_cand(cand_data):
+            grid = cand_data.get("grid")
+            h = len(grid) if grid else 0
+            w = len(grid[0]) if h > 0 else 0
+            dims = f"[{w}x{h}]"
+            
             correct = cand_data.get("is_correct")
             if correct is None and ground_truth is not None:
                 correct = (cand_data["grid"] == ground_truth)
                 cand_data["is_correct"] = correct
             icon = "✅" if correct else "❌"
-            return f"{icon} {cand_data['score_label']}"
+            return f"{icon} {cand_data['score_label']} {dims}"
 
         cand_1_str = format_cand(top_candidates[0]) if len(top_candidates) >= 1 else "-"
         if len(top_candidates) >= 1 and top_candidates[0].get("is_correct"): is_any_correct = True
