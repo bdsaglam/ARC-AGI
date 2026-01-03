@@ -52,6 +52,7 @@ def main():
     parser.add_argument("--logs-dir", required=True, help="Directory containing log files")
     parser.add_argument("--judge", required=True, choices=["vote", "logic", "consistency", "duo"], help="Judge strategy to replay")
     parser.add_argument("--model", default="gpt-5.2-low", help="Model to use for the judge (ignored for 'vote')")
+    parser.add_argument("--task-test-selection", help="Comma-separated list of TaskID:TestIndex pairs (e.g. '4e34c42c:2,88e364bc:1')")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
     
     args = parser.parse_args()
@@ -60,6 +61,21 @@ def main():
     if not logs_dir.exists():
         print(f"Error: Directory '{logs_dir}' does not exist.")
         sys.exit(1)
+
+    # Parse task selection if provided
+    selected_tasks = None
+    if args.task_test_selection:
+        try:
+            selected_tasks = set()
+            for item in args.task_test_selection.split(","):
+                parts = item.strip().split(":")
+                if len(parts) != 2:
+                    raise ValueError(f"Invalid format: {item}")
+                selected_tasks.add((parts[0], int(parts[1])))
+            print(f"Filtering for {len(selected_tasks)} specific task:test pairs.")
+        except Exception as e:
+            print(f"Error parsing --task-test-selection: {e}", file=sys.stderr)
+            sys.exit(1)
 
     # 1. Setup API Clients
     openai_key, claude_key, google_keys = get_api_keys()
@@ -73,7 +89,7 @@ def main():
         print(f"No step_finish.json files found in {logs_dir}")
         sys.exit(0)
         
-    print(f"Found {len(finish_files)} tasks to replay.")
+    print(f"Found {len(finish_files)} total log files.")
     print(f"Replaying with Judge: {args.judge.upper()} (Model: {args.model})")
     print("-" * 80)
     print(f"{'Task ID':<15} | {'Test':<5} | {'Correct?':<10} | {'Score/Votes':<12} | {'Notes'}")
@@ -99,6 +115,10 @@ def main():
             task_id = parts[-4]
             test_index = int(parts[-3])
             timestamp_str = "_".join(parts[:-4]) 
+            
+            # Apply Filter
+            if selected_tasks and (task_id, test_index) not in selected_tasks:
+                continue
             
         except Exception as e:
             if args.verbose:
