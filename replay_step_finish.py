@@ -24,7 +24,7 @@ def load_json_file(path):
         print(f"Error loading {path}: {e}", file=sys.stderr)
         return None
 
-def find_reasoning_for_candidate(candidate_run_ids, run_logs):
+def find_reasoning_for_candidate(candidate_run_ids, run_logs, verbose=False):
     """
     Searches through loaded run logs (step 1 and step 5) to find the reasoning
     associated with any of the run_ids that produced this candidate.
@@ -32,20 +32,35 @@ def find_reasoning_for_candidate(candidate_run_ids, run_logs):
     """
     reasoning_map = {}
     
-    # Pre-process logs into a single flat lookup if possible or search smarter
-    # To keep it simple, we'll just search recursively for each run_id
-    
     def search_in_dict(d, target_id):
+        # 1. Direct match (fast path)
         if target_id in d:
             return d[target_id]
         
+        # 2. Prefix match (for timestamped keys)
+        # We look for key that starts with target_id + "_"
+        prefix = target_id + "_"
         for k, v in d.items():
+            if k.startswith(prefix):
+                return v
+            
+            # 3. Nested search
             if isinstance(v, dict):
-                # Optimization: Step 5 strategies are 1 level deep. 
-                # Deep recursive search might be slow if logs are huge, but depth is usually shallow.
+                # Check nested keys
                 if target_id in v:
                     return v[target_id]
+                
+                # Check nested keys for prefix match
+                for sub_k, sub_v in v.items():
+                    if sub_k.startswith(prefix):
+                        return sub_v
+                    if isinstance(sub_v, dict) and target_id in sub_v: # Handle deeper nesting if needed
+                         return sub_v[target_id]
         return None
+
+    if verbose:
+        print(f"DEBUG: Looking for run_ids: {candidate_run_ids}")
+        print(f"DEBUG: Loaded {len(run_logs)} log files.")
 
     for run_id in candidate_run_ids:
         found_entry = None
@@ -62,6 +77,8 @@ def find_reasoning_for_candidate(candidate_run_ids, run_logs):
                     if log_item.get("type") == "text":
                         reasoning_map[run_id] = log_item.get("content", "")
                         break
+        elif verbose:
+            print(f"DEBUG: Could not find entry for {run_id}")
     
     return reasoning_map
 
@@ -208,7 +225,7 @@ def main():
             models = val.get("models", [])
             
             # Find Reasoning
-            reasoning = find_reasoning_for_candidate(models, run_logs)
+            reasoning = find_reasoning_for_candidate(models, run_logs, verbose=args.verbose)
             
             candidates_list.append({
                 "id": idx,
