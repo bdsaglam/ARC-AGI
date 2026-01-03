@@ -240,7 +240,7 @@ def main():
             total_attempts = sum(c["count"] for c in candidates_list)
             prompt = build_duo_pick_prompt(train_examples, test_input, candidates_list, reasoning_store, total_attempts)
             duo_data = {"prompt": prompt}
-            _ = run_duo_pick_judge(prompt, args.model, openai_client, anthropic_client, google_keys, duo_data, args.verbose, use_background=False)
+            _ = run_duo_pick_judge(prompt, args.model, openai_client, anthropic_client, google_keys, duo_data, args.verbose, use_background=True)
             selection_metadata["judges"]["duo_pick"] = duo_data
             selection_metadata["selection_process"] = {"type": "Duo Pick Judge Replay"}
             if "response" in duo_data and duo_data["response"]:
@@ -264,7 +264,7 @@ def main():
         elif args.judge in ["logic", "consistency"]:
             prompt = build_logic_prompt(train_examples, test_input, candidates_list) if args.judge == "logic" else build_consistency_prompt(train_examples, test_input, candidates_list)
             judge_data = {"prompt": prompt}
-            res = run_judge("Logic" if args.judge == "logic" else "Consistency", prompt, args.model, openai_client, anthropic_client, google_keys, judge_data, args.verbose, use_background=False)
+            res = run_judge("Logic" if args.judge == "logic" else "Consistency", prompt, args.model, openai_client, anthropic_client, google_keys, judge_data, args.verbose, use_background=True)
             selection_metadata["judges"][args.judge] = judge_data
             selection_metadata["selection_process"] = {"type": f"{args.judge.capitalize()} Judge Replay"}
             scores = {c_res.get("candidate_id"): c_res.get("score", 0) for c_res in res.get("candidates", [])} if res else {}
