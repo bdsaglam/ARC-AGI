@@ -6,7 +6,7 @@ from src.judges import run_judge, run_duo_pick_judge
 def pick_solution_v2(candidates_object, reasoning_store, task, test_index, openai_client, anthropic_client, google_keys, judge_model="gpt-5.2-xhigh", verbose: int = 0, openai_background: bool = False, judge_consistency_enable: bool = False, judge_duo_pick_enable: bool = True, total_attempts: int = 0):
     """
     Advanced solution picker using LLM Judges.
-    - If judge_duo_pick_enable: Runs a Meta-Conclusion judge to pick top 2 solutions.
+    - If judge_duo_pick_enable: Runs a "Council of 3 Duo Judges" to pick top solutions.
     - Fallback: Consensus (Vote Count) and Auditor Choice (Max Score).
     """
     if verbose >= 1:
@@ -37,7 +37,7 @@ def pick_solution_v2(candidates_object, reasoning_store, task, test_index, opena
         "selection_process": {}
     }
 
-    if not candidates_list:
+    if not candidates_list and not judge_duo_pick_enable:
         print("[pick_solution_v2] No candidates found.")
         return [], False, selection_metadata
 
@@ -47,81 +47,141 @@ def pick_solution_v2(candidates_object, reasoning_store, task, test_index, opena
             if model_id in reasoning_store:
                 cand["reasoning"][model_id] = reasoning_store[model_id]
 
-    # 2. Duo Pick Judge (High Priority)
+    # 2. Council of Duo Judges
     if judge_duo_pick_enable:
-        print("[pick_solution_v2] Invoking Duo Pick Judge...", file=sys.stderr)
-        duo_data = { "prompt": None, "response": None, "picked_grids": None }
         duo_prompt = build_duo_pick_prompt(train_examples, test_input, candidates_list, reasoning_store, total_attempts)
-        duo_data["prompt"] = duo_prompt
         
-        duo_res_grids = run_duo_pick_judge(duo_prompt, judge_model, openai_client, anthropic_client, google_keys, duo_data, verbose, openai_background)
-        selection_metadata["judges"]["duo_pick"] = duo_data
-        
-        if duo_res_grids and len(duo_res_grids) >= 2:
-            if verbose >= 1:
-                print(f"[pick_solution_v2] Duo Pick Judge successfully returned {len(duo_res_grids)} grids.")
+        council_results = []
+        for i in range(3):
+            council_results.append({ "run_index": i, "prompt": duo_prompt, "response": None, "picked_grids": None })
+
+        # Run 3 judges in parallel
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = []
+            for i in range(3):
+                futures.append(executor.submit(
+                    run_duo_pick_judge, 
+                    duo_prompt, 
+                    judge_model, 
+                    openai_client, 
+                    anthropic_client, 
+                    google_keys, 
+                    council_results[i], 
+                    verbose, 
+                    openai_background
+                ))
+            for f in futures:
+                f.result() # Wait for all
+
+        selection_metadata["judges"]["duo_pick_council"] = council_results
+
+        # Scoring System
+        scoreboard = {} # grid_tuple -> {points, grid, origin, source_runs}
+
+        for run in council_results:
+            grids = run.get("picked_grids")
+            if not grids:
+                continue
             
-            final_selection_groups = []
-            for i, res_grid in enumerate(duo_res_grids):
+            # Points: 1st choice = 2 pts, 2nd choice = 1 pt
+            for i, res_grid in enumerate(grids):
+                points = 2 if i == 0 else 1
                 res_tuple = tuple(tuple(row) for row in res_grid)
                 
-                # Try to find if this grid matches an existing candidate
-                match_found = False
-                for cand in candidates_list:
-                    cand_tuple = tuple(tuple(row) for row in cand['grid'])
-                    if res_tuple == cand_tuple:
-                        # Use existing candidate metadata
-                        group = candidates_object[cand_tuple]
-                        
-                        # Add Judge Feedback to reasoning_summary
-                        feedback = f"\n\n--- DUO PICK JUDGE CHOICE (Attempt {i+1}) ---"
-                        feedback += duo_data["response"][:1000] # Include snippet of response
-                        
-                        existing_summary = group.get("reasoning_summary", "")
-                        group["reasoning_summary"] = feedback + "\n\n" + existing_summary
-                        
-                        final_selection_groups.append(group)
-                        match_found = True
+                if res_tuple not in scoreboard:
+                    # Check if it matches an existing candidate
+                    match_id = None
+                    for cand in candidates_list:
+                        if tuple(tuple(row) for row in cand['grid']) == res_tuple:
+                            match_id = cand['id']
+                            break
+                    
+                    scoreboard[res_tuple] = {
+                        "points": 0,
+                        "grid": res_grid,
+                        "origin": "Existing Candidate" if match_id is not None else "Synthesized (New Grid)",
+                        "matched_original_candidate_id": match_id,
+                        "voted_by_judges": []
+                    }
+                
+                scoreboard[res_tuple]["points"] += points
+                scoreboard[res_tuple]["voted_by_judges"].append(run["run_index"])
+
+        # Sort scoreboard by points descending
+        sorted_scoreboard = sorted(scoreboard.items(), key=lambda x: x[1]["points"], reverse=True)
+        
+        # Log scoreboard for metadata
+        selection_metadata["selection_process"]["scoreboard"] = [
+            {
+                "grid": v["grid"],
+                "points": v["points"],
+                "origin": v["origin"],
+                "voted_by_judges": v["voted_by_judges"],
+                "matched_original_candidate_id": v["matched_original_candidate_id"]
+            } for k, v in sorted_scoreboard
+        ]
+
+        # Select Top 2 from Judges
+        final_selection_groups = []
+        for i in range(min(2, len(sorted_scoreboard))):
+            grid_tuple, entry = sorted_scoreboard[i]
+            
+            if entry["matched_original_candidate_id"] is not None:
+                # Use existing candidate metadata
+                group = candidates_object[grid_tuple]
+                
+                feedback = f"\n\n--- COUNCIL OF JUDGES CHOICE (Score: {entry['points']}, Origin: {entry['origin']}) ---"
+                # Add a bit of reasoning from the first run that voted for it
+                first_voter_idx = entry["voted_by_judges"][0]
+                feedback += council_results[first_voter_idx].get("response", "")[:500]
+                
+                existing_summary = group.get("reasoning_summary", "")
+                group["reasoning_summary"] = feedback + "\n\n" + existing_summary
+                final_selection_groups.append(group)
+            else:
+                # Create a new candidate for the judge's synthesized solution
+                new_group = {
+                    "grid": entry["grid"],
+                    "count": 0,
+                    "models": [f"duo_pick_council_synth_{i}"],
+                    "is_correct": None,
+                    "reasoning_summary": f"--- COUNCIL OF JUDGES SYNTHESIZED SOLUTION (Score: {entry['points']}) ---\n" + council_results[entry["voted_by_judges"][0]].get("response", "")
+                }
+                final_selection_groups.append(new_group)
+
+        # Fallback to Voting if < 2 candidates
+        if len(final_selection_groups) < 2:
+            print(f"[pick_solution_v2] Judges only provided {len(final_selection_groups)} grids. Falling back to voting for remaining slots.", file=sys.stderr)
+            selection_metadata["selection_process"]["fallback_triggered"] = True
+            
+            # Sort candidates by consensus count
+            voted_candidates = sorted(candidates_list, key=lambda c: c['count'], reverse=True)
+            
+            for cand in voted_candidates:
+                if len(final_selection_groups) >= 2:
+                    break
+                
+                cand_tuple = tuple(tuple(row) for row in cand['grid'])
+                # Avoid duplicates
+                is_duplicate = False
+                for existing in final_selection_groups:
+                    if tuple(tuple(row) for row in existing['grid']) == cand_tuple:
+                        is_duplicate = True
                         break
                 
-                if not match_found:
-                    # Create a new candidate for the judge's unique solution
-                    new_group = {
-                        "grid": res_grid,
-                        "count": 0,
-                        "models": ["duo_pick_judge"],
-                        "is_correct": None, # Unknown
-                        "reasoning_summary": f"--- DUO PICK JUDGE ORIGINAL SOLUTION (Attempt {i+1}) ---" + duo_data["response"]
-                    }
-                    final_selection_groups.append(new_group)
-            
-            selection_metadata["selection_process"] = {
-                "type": "Duo Pick Judge",
-                "attempt_1": "Judge Pick 1",
-                "attempt_2": "Judge Pick 2" if len(final_selection_groups) > 1 else None
-            }
-            
-            # Final Success Check for Duo Pick
-            is_solved_flag = False
-            unknown_status = False
-            for group in final_selection_groups:
-                correctness = group.get("is_correct")
-                if correctness is None: unknown_status = True
-                elif correctness: is_solved_flag = True
-            
-            return final_selection_groups, is_solved_flag, selection_metadata
-        else:
-            reason = "Unknown"
-            if "error" in duo_data:
-                reason = f"Error: {duo_data['error']}"
-            elif duo_res_grids is None:
-                reason = "No grids parsed (None returned)"
-            else:
-                reason = f"Only {len(duo_res_grids)} grid(s) found (needed 2)"
-            
-            print(f"[pick_solution_v2] WARNING: Duo Pick Judge failed. Falling back to Standard logic. Reason: {reason}", file=sys.stderr)
+                if not is_duplicate:
+                    group = candidates_object[cand_tuple]
+                    group["reasoning_summary"] = group.get("reasoning_summary", "") + "\n\n--- FALLBACK SELECTION (Consensus) ---"
+                    final_selection_groups.append(group)
 
-    # 3. Standard Logic (Fallback)
+        selection_metadata["selection_process"]["type"] = "Council of Duo Judges"
+        selection_metadata["selection_process"]["final_count"] = len(final_selection_groups)
+
+        # Final Success Check
+        is_solved_flag = any(g.get("is_correct") for g in final_selection_groups)
+        return final_selection_groups, is_solved_flag, selection_metadata
+
+    # 3. Standard Logic (Complete Fallback if Duo Pick Disabled)
     # Filter Candidates for Judging
     multi_vote_candidates = [c for c in candidates_list if c['count'] >= 2]
     if len(multi_vote_candidates) >= 2:
