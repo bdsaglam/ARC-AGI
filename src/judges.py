@@ -38,9 +38,6 @@ def extract_json(text):
     return None
 
 def run_judge(judge_name, prompt, judge_model, openai_client, anthropic_client, google_keys, result_container, verbose: int = 0, use_background: bool = False):
-    if verbose >= 1:
-        print(f"\n[pick_solution_v2] Running {judge_name} Judge ({judge_model})...")
-    
     timings = []
     try:
         start_ts = time.perf_counter()
@@ -172,9 +169,6 @@ def extract_all_grids(text):
     return blocks
 
 def run_duo_pick_judge(prompt, judge_model, openai_client, anthropic_client, google_keys, result_container, verbose: int = 0, use_background: bool = False):
-    if verbose >= 1:
-        print(f"\n[pick_solution_v2] Running Duo Pick Judge ({judge_model})...")
-    
     timings = []
     try:
         start_ts = time.perf_counter()
