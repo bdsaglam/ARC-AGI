@@ -99,8 +99,37 @@ def run_with_retry(
                     is_retryable=True
                 )
 
+            # Custom concise handling for OpenAI background errors (Timeout or Token Limit)
+            error_str = str(e)
+            is_concise = False
+            
+            # Identify concise errors
+            concise_msg = None
+            retry_tag = f"Retry {attempt + 1}/{max_retries}:"
+            if "OpenAI Background Job" in error_str:
+                if "timed out after" in error_str:
+                    concise_msg = f"Err: {retry_tag} OpenAI Timeout 3600s"
+                    is_concise = True
+                elif "hit token limit" in error_str or "max_output_tokens" in error_str:
+                    concise_msg = f"Err: {retry_tag} OpenAI Max Tokens"
+                    is_concise = True
+                elif "violating our usage policy" in error_str:
+                    concise_msg = f"Err: {retry_tag} OpenAI Policy Violation"
+                    is_concise = True
+            elif "claude-opus" in error_str and ("peer closed connection" in error_str or "incomplete chunked read" in error_str):
+                concise_msg = f"Err: {retry_tag} Claude Connection Closed"
+                is_concise = True
+            elif "gemini" in error_str.lower() and ("499" in error_str or "cancelled" in error_str.lower()):
+                concise_msg = f"Err: {retry_tag} Gemini Cancelled (499)"
+                is_concise = True
+
+            # Only print if NOT the final attempt
+            if is_concise and attempt < max_retries - 1:
+                print(concise_msg, file=sys.stdout)
+
             if attempt == max_retries - 1:
-                logger.error(f"{log_prefix}Max retries ({max_retries}) exceeded. Final error: {e}")
+                if not is_concise:
+                    logger.error(f"{log_prefix}Max retries ({max_retries}) exceeded. Final error: {e}")
                 raise e
             
             if attempt < len(retry_delays):
@@ -111,29 +140,8 @@ def run_with_retry(
             if isinstance(e, UnknownProviderError):
                 logger.error(f"{log_prefix}!!! UNKNOWN ERROR (after {duration:.2f}s) - RETRYING (Attempt {attempt + 1}/{max_retries}) !!!")
                 logger.error(f"{log_prefix}Error details: {e}")
-            else:
-                # Custom concise handling for OpenAI background errors (Timeout or Token Limit)
-                error_str = str(e)
-                if "OpenAI Background Job" in error_str:
-                    if "timed out after" in error_str:
-                        print(f"Err: OpenAI Timed Out 3600s", file=sys.stdout)
-                        is_concise = True
-                    elif "hit token limit" in error_str or "max_output_tokens" in error_str:
-                        print(f"Err: OpenAI max_output_tokens", file=sys.stdout)
-                        is_concise = True
-                    elif "violating our usage policy" in error_str:
-                        print(f"Err: OpenAI Policy Violation", file=sys.stdout)
-                        is_concise = True
-                    else:
-                        is_concise = False
-                elif "claude-opus" in error_str and ("peer closed connection" in error_str or "incomplete chunked read" in error_str):
-                    print(f"Err: Claude closed connection", file=sys.stdout)
-                    is_concise = True
-                else:
-                    is_concise = False
-                
-                if not is_concise:
-                    logger.warning(f"{log_prefix}Retryable error (after {duration:.2f}s): {e}. Retrying in {sleep_time}s (Attempt {attempt + 1}/{max_retries})...")
+            elif not is_concise:
+                logger.warning(f"{log_prefix}Retryable error (after {duration:.2f}s): {e}. Retrying in {sleep_time}s (Attempt {attempt + 1}/{max_retries})...")
             
             if timing_tracker is not None:
                 timing_tracker.append({

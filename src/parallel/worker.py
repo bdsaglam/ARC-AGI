@@ -163,13 +163,15 @@ def run_single_model(
         concise_msg = None
         
         if "openai" in error_lower and ("max_output_tokens" in error_lower or "hit token limit" in error_lower):
-            concise_msg = "ERR: OpenAI max_output_tokens"
+            concise_msg = "Err: FAIL: OpenAI Max Tokens"
         elif "openai" in error_lower and "timed out after" in error_lower:
-            concise_msg = "ERR: OpenAI Timed Out 3600s"
+            concise_msg = "Err: FAIL: OpenAI Timeout 3600s"
         elif "violating our usage policy" in error_lower:
-            concise_msg = "ERR: OpenAI Policy Violation"
+            concise_msg = "Err: FAIL: OpenAI Policy Violation"
         elif "claude-opus" in error_lower and ("peer closed connection" in error_lower or "incomplete chunked read" in error_lower):
-            concise_msg = "ERR: Claude closed connection"
+            concise_msg = "Err: FAIL: Claude Connection Closed"
+        elif "gemini" in error_lower and ("499" in error_lower or "cancelled" in error_lower):
+            concise_msg = "Err: FAIL: Gemini Cancelled (499)"
 
         if concise_msg:
              # Brief summary to stdout
