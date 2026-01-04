@@ -116,6 +116,9 @@ def run_with_retry(
                 elif "violating our usage policy" in error_str:
                     concise_msg = f"Err: {retry_tag} OpenAI Policy Violation"
                     is_concise = True
+                elif "server_error" in error_str:
+                    concise_msg = f"Err: {retry_tag} OpenAI Server Error"
+                    is_concise = True
             elif "claude-opus" in error_str and ("peer closed connection" in error_str or "incomplete chunked read" in error_str):
                 concise_msg = f"Err: {retry_tag} Claude Connection Closed"
                 is_concise = True

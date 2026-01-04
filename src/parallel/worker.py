@@ -168,6 +168,8 @@ def run_single_model(
             concise_msg = "Err: FAIL: OpenAI Timeout 3600s"
         elif "violating our usage policy" in error_lower:
             concise_msg = "Err: FAIL: OpenAI Policy Violation"
+        elif "server_error" in error_lower:
+            concise_msg = "Err: FAIL: OpenAI Server Error"
         elif "claude-opus" in error_lower and ("peer closed connection" in error_lower or "incomplete chunked read" in error_lower):
             concise_msg = "Err: FAIL: Claude Connection Closed"
         elif "gemini" in error_lower and ("499" in error_lower or "cancelled" in error_lower):
