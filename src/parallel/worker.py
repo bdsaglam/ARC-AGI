@@ -157,12 +157,21 @@ def run_single_model(
         )
 
     except Exception as e:
-        # Check for specific OpenAI max token error
-        is_token_limit = "max_output_tokens" in str(e) and "OpenAI" in str(e)
+        # Check for concise error types
+        error_str = str(e)
+        concise_msg = None
+        if "OpenAI" in error_str and ("max_output_tokens" in error_str or "hit token limit" in error_str):
+            concise_msg = "ERR: OpenAI max_output_tokens"
+        elif "OpenAI" in error_str and "timed out after" in error_str:
+            concise_msg = "ERR: OpenAI Timed Out 3600s"
+        elif "violating our usage policy" in error_str:
+            concise_msg = "ERR: OpenAI Policy Violation"
+        elif "claude-opus" in error_str and ("peer closed connection" in error_str or "incomplete chunked read" in error_str):
+            concise_msg = "ERR: Claude closed connection"
 
-        if is_token_limit:
+        if concise_msg:
              # Brief summary to stdout
-             print(f"{prefix} ERR: OpenAI max_output_tokens")
+             print(concise_msg)
         else:
             # Full critical error dump to stderr
             error_msg = f"\n!!! CRITICAL ERROR in {model_name} ({run_id}) !!!\n{str(e)}\n{traceback.format_exc()}\n"

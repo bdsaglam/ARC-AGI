@@ -116,13 +116,19 @@ def run_with_retry(
                 error_str = str(e)
                 if "OpenAI Background Job" in error_str:
                     if "timed out after" in error_str:
-                        print(f"{log_prefix}Err: OpenAI Timed Out 3600s", file=sys.stdout)
+                        print(f"Err: OpenAI Timed Out 3600s", file=sys.stdout)
                         is_concise = True
                     elif "hit token limit" in error_str or "max_output_tokens" in error_str:
-                        print(f"{log_prefix}Err: OpenAI max_output_tokens", file=sys.stdout)
+                        print(f"Err: OpenAI max_output_tokens", file=sys.stdout)
+                        is_concise = True
+                    elif "violating our usage policy" in error_str:
+                        print(f"Err: OpenAI Policy Violation", file=sys.stdout)
                         is_concise = True
                     else:
                         is_concise = False
+                elif "claude-opus" in error_str and ("peer closed connection" in error_str or "incomplete chunked read" in error_str):
+                    print(f"Err: Claude closed connection", file=sys.stdout)
+                    is_concise = True
                 else:
                     is_concise = False
                 
