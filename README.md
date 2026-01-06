@@ -57,7 +57,14 @@ Based on the judges assessment all candidates are scored, and a decision is made
 
 I've done a bunch of analysis to come to this algorithm that may be informative to others trying to solve ARC AGI. Please see below for some of that analysis, or just hook me up on the ARC AGI discord channel.
 
-## Current performance (Dec 15 2025)
+## Current performance (Jan 5, 2026)
+
+76.11% on ARC AGI 2 eval: https://x.com/LandJohan/status/2008197725263716589
+
+Latest solver on the V7 branch: https://github.com/beetree/ARC-AGI/tree/Johan_Land_Solver_V7
+
+
+## Historical performance (Dec 15 2025)
 
 The performance is: 70.7% on [arc agi 2 eval dataset](https://github.com/arcprize/ARC-AGI-2/tree/main/data/evaluation)
 
