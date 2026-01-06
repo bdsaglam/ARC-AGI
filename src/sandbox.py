@@ -58,8 +58,65 @@ def sanitize_output(obj):
         return sanitize_output(obj.tolist())
     return obj
 
+def secure_runtime():
+    import sys
+    import os
+
+    # --- Layer 1: Socket Monkey Patching (Patch FIRST) ---
+    # We import and cripple the socket module immediately. 
+    # Even if Layer 2 (Poisoning) is bypassed or undone, the cached module object 
+    # remains broken ("booby-trapped").
+    try:
+        import socket
+        def blocked_op(*args, **kwargs):
+            raise RuntimeError("Sandbox Violation: Network operation blocked by monkey-patch.")
+        
+        socket.socket = blocked_op
+        socket.create_connection = blocked_op
+        socket.getaddrinfo = blocked_op
+        socket.gethostbyname = blocked_op
+    except (ImportError, AttributeError, TypeError):
+        pass 
+
+    # --- Layer 2: Network Poisoning (Poison SECOND) ---
+    # Disable specific libraries by injecting None into sys.modules.
+    # This prevents them from being imported in the first place.
+    banned_modules = [
+        # Fundamentals
+        'socket', 'ssl', 'asyncio',
+        
+        # Standard Library Clients
+        'requests', 'urllib3', 'ftplib', 'poplib', 'imaplib', 'nntplib', 'smtplib', 'telnetlib', 
+        
+        # Modern Async & WebSockets
+        'httpx', 'aiohttp', 'websockets',
+        
+        # SSH / Cloud / System
+        'paramiko', 'boto3', 'botocore', 'google', 'azure', 'subprocess'
+    ]
+    
+    for mod in banned_modules:
+        sys.modules[mod] = None
+
+    # --- Layer 3: Audit Hooks ---
+    # The final line of defense for events that might bypass python layers.
+    def audit_hook(event, args):
+        # 1. Block Low-Level Network Access
+        if event in ["socket.bind", "socket.connect", "http.client.connect", "urllib.request"]:
+            raise RuntimeError(f"Sandbox Violation: Network attempt detected ({event})")
+        
+        # 2. Block Subprocesses
+        if event in ["os.system", "subprocess.Popen", "os.posix_spawn"]:
+            raise RuntimeError("Sandbox Violation: Subprocess detected")
+
+    if hasattr(sys, 'addaudithook'):
+        sys.addaudithook(audit_hook)
+
 def main():
     try:
+        # Secure the runtime environment immediately
+        secure_runtime()
+
         # Read payload from stdin
         input_data = sys.stdin.read()
         if not input_data:
