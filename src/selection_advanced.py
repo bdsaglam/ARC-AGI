@@ -140,18 +140,11 @@ def pick_solution_v2(candidates_object, reasoning_store, task, test_index, opena
                 final_selection_groups.append(group)
             else:
                 # Create a new candidate for the judge's synthesized solution
-                # Verify against ground truth if available
-                synth_is_correct = None
-                if task.test and len(task.test) >= test_index:
-                    correct_output = task.test[test_index-1].output
-                    if correct_output is not None:
-                        synth_is_correct = (entry["grid"] == correct_output)
-
                 new_group = {
                     "grid": entry["grid"],
                     "count": 0,
                     "models": [f"duo_pick_council_synth_{i}"],
-                    "is_correct": synth_is_correct,
+                    "is_correct": None,
                     "reasoning_summary": f"--- COUNCIL OF JUDGES SYNTHESIZED SOLUTION (Score: {entry['points']}) ---\n" + council_results[entry["voted_by_judges"][0]].get("response", "")
                 }
                 final_selection_groups.append(new_group)
