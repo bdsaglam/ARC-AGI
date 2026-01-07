@@ -12,7 +12,7 @@ def _hard_timeout_handler(signum, frame):
     print(f"\n!!! CRITICAL WATCHDOG TIMEOUT !!!\nProcess {os.getpid()} exceeded global time limit. Killing.", file=sys.stderr)
     os._exit(1) # Hard kill process, skipping cleanup handlers
 
-def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rate_limit_scale: float = 1.0, answer_path: Path = None, status_counters=None):
+def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rate_limit_scale: float = 1.0, answer_path: Path = None, status_counters=None, task_data: dict = None):
     if status_counters:
         running, remaining, finished, lock = status_counters
         with lock:
@@ -32,7 +32,7 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
         if rate_limit_scale != 1.0:
             set_rate_limit_scaling(rate_limit_scale)
             
-        task_id = task_path.stem
+        task_id = task_path.stem if task_path else "unknown"
         
         predictions = None
 
@@ -106,7 +106,8 @@ def execute_task(args, task_path: Path, test_index: int, run_timestamp: str, rat
                     codegen_params=args.codegen_params,
                     step1_models=args.step1_models,
                     disable_step_1_standard_models=args.disable_step_1_standard_models,
-                    logs_directory=args.logs_directory
+                    logs_directory=args.logs_directory,
+                    task_data=task_data
                 )
             except Exception as e:
                 raise e

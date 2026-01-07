@@ -6,13 +6,13 @@ from src.solver.state import SolverState
 from src.solver.steps import run_step_1, run_step_3, run_step_5, check_is_solved
 
 # Re-export run_solver_mode for backward compatibility if imported elsewhere
-def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False, force_step_2: bool = False, judge_model: str = "gpt-5.2-xhigh", old_pick_solution: bool = False, task_status=None,     openai_background: bool = True, enable_step_3_and_4: bool = False, judge_consistency_enable: bool = False, judge_duo_pick_enable: bool = True, codegen_params: str = "gpt-5.2-low=v1b,gpt-5.2-low=v4,gemini-3-low=v4", step1_models: str = "gpt-5.2-none,claude-opus-4.5-no-thinking", disable_step_1_standard_models: bool = False, logs_directory: str = "logs/"):
+def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: bool = False, run_timestamp: str = None, task_path: Path = None, answer_path: Path = None, step_5_only: bool = False, objects_only: bool = False, force_step_5: bool = False, force_step_2: bool = False, judge_model: str = "gpt-5.2-xhigh", old_pick_solution: bool = False, task_status=None,     openai_background: bool = True, enable_step_3_and_4: bool = False, judge_consistency_enable: bool = False, judge_duo_pick_enable: bool = True, codegen_params: str = "gpt-5.2-low=v1b,gpt-5.2-low=v4,gemini-3-low=v4", step1_models: str = "gpt-5.2-none,claude-opus-4.5-no-thinking", disable_step_1_standard_models: bool = False, logs_directory: str = "logs/", task_data: dict = None):
     
     set_log_dir(logs_directory)
 
     # Initialize State
     try:
-        state = SolverState(task_id, test_index, verbose, is_testing, run_timestamp, task_path, answer_path, judge_model, old_pick_solution=old_pick_solution, task_status=task_status, openai_background=openai_background, judge_consistency_enable=judge_consistency_enable, judge_duo_pick_enable=judge_duo_pick_enable, codegen_prompt=None, logs_directory=logs_directory)
+        state = SolverState(task_id, test_index, verbose, is_testing, run_timestamp, task_path, answer_path, judge_model, old_pick_solution=old_pick_solution, task_status=task_status, openai_background=openai_background, judge_consistency_enable=judge_consistency_enable, judge_duo_pick_enable=judge_duo_pick_enable, codegen_prompt=None, logs_directory=logs_directory, task_data=task_data)
     except Exception as e:
         print(f"Error initializing solver state: {e}", file=sys.stderr)
         raise e

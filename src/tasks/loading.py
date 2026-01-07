@@ -1,10 +1,13 @@
 import json
 from pathlib import Path
-from typing import List
+from typing import List, Union, Dict
 from src.types import Example, Task
 
-def load_task(json_path: Path, answer_path: Path = None) -> Task:
-    data = json.loads(json_path.read_text())
+def load_task(json_source: Union[Path, Dict], answer_path: Path = None) -> Task:
+    if isinstance(json_source, dict):
+        data = json_source
+    else:
+        data = json.loads(json_source.read_text())
 
     def to_examples(items: List[dict], is_test: bool = False) -> List[Example]:
         examples = []

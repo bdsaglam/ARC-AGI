@@ -21,6 +21,7 @@ def main():
     task_group = parser.add_mutually_exclusive_group(required=True)
     task_group.add_argument("--task", help="Task ID (e.g., 38007db0) or path to JSON file")
     task_group.add_argument("--task-directory", help="Directory containing task JSON files to run in batch")
+    task_group.add_argument("--task-file", help="Path to a monolithic JSON file containing multiple tasks (Kaggle format)")
     
     parser.add_argument("--task-selection", help="Comma-separated list of Task IDs to select from the directory (e.g. '08ed6ac7,15696249').")
     parser.add_argument("--task-test-selection", help="Comma-separated list of TaskID:TestIndex pairs (e.g. 'de809cff:1,faa9f03d:1').")

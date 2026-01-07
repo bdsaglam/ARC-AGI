@@ -12,7 +12,7 @@ from src.logging import setup_logging, write_step_log, PrefixedStdout
 from src.models import parse_model_arg, PRICING_PER_1M_TOKENS, GEMINI_3_BASE
 
 class SolverState:
-    def __init__(self, task_id: str, test_index: int, verbose: int, is_testing: bool, run_timestamp: str, task_path: Path = None, answer_path: Path = None, judge_model: str = "gpt-5.2-xhigh", old_pick_solution: bool = False, task_status=None, openai_background: bool = True, judge_consistency_enable: bool = False, judge_duo_pick_enable: bool = True, codegen_prompt: str = "v1b", logs_directory: str = "logs/"):
+    def __init__(self, task_id: str, test_index: int, verbose: int, is_testing: bool, run_timestamp: str, task_path: Path = None, answer_path: Path = None, judge_model: str = "gpt-5.2-xhigh", old_pick_solution: bool = False, task_status=None, openai_background: bool = True, judge_consistency_enable: bool = False, judge_duo_pick_enable: bool = True, codegen_prompt: str = "v1b", logs_directory: str = "logs/", task_data: dict = None):
         self.task_id = task_id
         self.test_index = test_index
         self.verbose = verbose
@@ -53,7 +53,7 @@ class SolverState:
         }
         
         # Load Task
-        if task_path is None:
+        if task_path is None and task_data is None:
             task_path = find_task_path(task_id)
         self.task_path = task_path
         
@@ -64,7 +64,10 @@ class SolverState:
         self.anthropic_client = Anthropic(api_key=claude_key, http_client=self.http_client) if claude_key else None
         self.google_keys = google_keys
         
-        self.task = load_task(task_path, answer_path=answer_path)
+        if task_data:
+            self.task = load_task(task_data, answer_path=answer_path)
+        else:
+            self.task = load_task(task_path, answer_path=answer_path)
         
         test_idx = test_index - 1
         if test_idx < 0 or test_idx >= len(self.task.test):

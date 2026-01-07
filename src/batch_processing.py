@@ -5,6 +5,7 @@ import time
 import threading
 import os
 import signal
+from pathlib import Path
 
 from src.execution import execute_task
 
@@ -64,7 +65,7 @@ def run_batch_execution(args, tasks_to_run, run_timestamp, rate_limit_scale, ans
             monitor_thread.start()
 
             future_to_task = {}
-            for i, (task_path, test_idx) in enumerate(tasks_to_run):
+            for i, item in enumerate(tasks_to_run):
                 # Check timeout before submitting next task (avoids starting new ones if close to limit)
                 if time.time() - start_time > GLOBAL_TIMEOUT_SECONDS:
                     print("Global timeout reached during submission. Stopping new tasks.", file=sys.stderr)
@@ -73,8 +74,18 @@ def run_batch_execution(args, tasks_to_run, run_timestamp, rate_limit_scale, ans
                 if i > 0 and startup_delay > 0:
                     time.sleep(startup_delay)
 
+                if len(item) == 3:
+                    task_id_str, test_idx, task_data = item
+                    # Create a dummy Path that looks like a filename so .stem works and answers check works (maybe)
+                    # Ideally answers match the ID. 
+                    # If answers_directory is used, we assume standard naming.
+                    task_path = Path(f"{task_id_str}.json") 
+                else:
+                    task_path, test_idx = item
+                    task_data = None
+
                 answer_path = answers_directory / task_path.name if answers_directory else None
-                future = executor.submit(execute_task, args, task_path, test_idx, run_timestamp, rate_limit_scale, answer_path, status_counters)
+                future = executor.submit(execute_task, args, task_path, test_idx, run_timestamp, rate_limit_scale, answer_path, status_counters, task_data)
                 future_to_task[future] = (task_path, test_idx)
             
             # Process results

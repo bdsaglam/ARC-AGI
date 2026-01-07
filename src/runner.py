@@ -1,6 +1,7 @@
 import sys
 import warnings
 import os
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from datetime import datetime
@@ -17,6 +18,8 @@ from src.llm_utils import set_retries_enabled
 def run_app(
     task=None,
     task_directory=None,
+    task_file=None,
+    answer_file=None,
     test=1,
     task_workers=60,
     startup_delay=90.0,
@@ -68,6 +71,7 @@ def run_app(
     args = SimpleNamespace(
         task=task,
         task_directory=task_directory,
+        task_file=task_file,
         test=test,
         task_workers=task_workers,
         task_limit=task_limit,
@@ -143,7 +147,76 @@ def run_app(
          print(f"Error: Answers directory '{answers_dir}' does not exist.", file=sys.stderr)
          sys.exit(1)
 
-    if args.task_directory:
+    if args.task_file:
+        # MONOLITHIC FILE MODE
+        file_path = Path(args.task_file)
+        if not file_path.exists():
+            print(f"Error: Task file '{file_path}' does not exist.", file=sys.stderr)
+            sys.exit(1)
+            
+        print(f"Loading tasks from monolithic file: {file_path}")
+        try:
+            with open(file_path, 'r') as f:
+                all_tasks = json.load(f)
+        except Exception as e:
+            print(f"Error reading task file: {e}", file=sys.stderr)
+            sys.exit(1)
+            
+        # Filter tasks
+        task_ids = sorted(list(all_tasks.keys()))
+        
+        if args.task_selection:
+            selected_ids = [t.strip() for t in args.task_selection.split(",")]
+            task_ids = [t for t in task_ids if t in selected_ids]
+            if not task_ids:
+                 print(f"No tasks found matching selection: {selected_ids}", file=sys.stderr)
+                 sys.exit(0)
+            print(f"Filtered to {len(task_ids)} tasks based on selection.")
+
+        if args.task_limit:
+            print(f"Limiting execution to first {args.task_limit} tasks.")
+            task_ids = task_ids[:args.task_limit]
+
+        # Prepare tasks_to_run
+        tasks_to_run = []
+        
+        if args.task_test_selection:
+            # Format: 'de809cff:1,faa9f03d:1'
+            try:
+                for item in args.task_test_selection.split(","):
+                    parts = item.strip().split(":")
+                    if len(parts) != 2:
+                        raise ValueError(f"Invalid format: {item}")
+                    tid, tidx = parts[0], int(parts[1])
+                    if tid in all_tasks:
+                        tasks_to_run.append((tid, tidx, all_tasks[tid]))
+                    else:
+                        print(f"Warning: Task {tid} from selection not found in monolithic file.", file=sys.stderr)
+            except Exception as e:
+                print(f"Error parsing --task-test-selection: {e}", file=sys.stderr)
+                sys.exit(1)
+        else:
+            for task_id in task_ids:
+                task_data = all_tasks[task_id]
+                # Count test cases
+                num_tests = len(task_data.get("test", []))
+                for i in range(num_tests):
+                    test_idx = i + 1
+                    # Add tuple (task_id, test_idx, task_data)
+                    tasks_to_run.append((task_id, test_idx, task_data))
+        
+        total_tasks = len(tasks_to_run)
+        print(f"Loaded {len(task_ids)} tasks. Total test cases: {total_tasks}")
+        print(f"Starting batch execution with {args.task_workers} parallel task workers...")
+        print()
+        
+        rate_limit_scale = 1.0 / max(1, args.task_workers)
+        
+        final_results = run_batch_execution(args, tasks_to_run, run_timestamp, rate_limit_scale, answers_dir, startup_delay=startup_delay)
+                        
+        generate_submission(final_results, args.submissions_directory, run_timestamp)
+
+    elif args.task_directory:
         if args.test != 1:
              print(f"Warning: --test argument ({args.test}) is ignored when using --task-directory. Running all tests for all tasks.", file=sys.stderr)
 
