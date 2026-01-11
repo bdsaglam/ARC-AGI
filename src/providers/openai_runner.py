@@ -1,5 +1,6 @@
 import base64
 import mimetypes
+import sys
 from typing import Optional, List, Dict, Any
 
 from openai import OpenAI
@@ -77,12 +78,13 @@ class OpenAIRequestRunner:
             kwargs["reasoning"] = {"effort": self.reasoning_effort}
         
         if enable_code_execution:
-            kwargs["tools"] = [{
-                "type": "code_interpreter",
-                "container": {"type": "auto"}
-            }]
-            kwargs["tool_choice"] = "auto"
-            kwargs["max_tool_calls"] = 100
+            print("\n\n!!! WARNING: CODE INTERPRETER REQUESTED BUT FORCE-DISABLED !!!\n", file=sys.stderr)
+            # kwargs["tools"] = [{
+            #     "type": "code_interpreter",
+            #     "container": {"type": "auto"}
+            # }]
+            # kwargs["tool_choice"] = "auto"
+            # kwargs["max_tool_calls"] = 100
             # kwargs["include"] = ["code_interpreter_call.outputs"]
 
         def _call_and_accumulate():

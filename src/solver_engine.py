@@ -45,15 +45,14 @@ def run_solver_mode(task_id: str, test_index: int, verbose: int, is_testing: boo
             models_step3 = ["claude-opus-4.5-thinking-60000", "gemini-3-high", "gemini-3-high", "gpt-5.2-xhigh", "gpt-5.2-xhigh"]
             
             # Step 5 - Production
-            models_step5_deep = ["gpt-5.2-xhigh"] * 4
-            models_step5_image = ["gpt-5.2-xhigh"] * 6 + ["gemini-3-high"] * 4
+            models_step5_deep = ["gpt-5.2-xhigh"] * 3
+            models_step5_image = ["gpt-5.2-xhigh"] * 3 + ["gemini-3-high"] * 1
             
             # Construct large codegen string
-            # 1x gemini-3-high v4 + 1x gpt-5.2-xhigh v1b + 5x gpt-5.2-xhigh v4
+            # 1x gemini-3-high v4 + 6x gpt-5.2-xhigh v1b
             parts = []
             parts.extend(["gemini-3-high=v4"] * 1)
-            parts.extend(["gpt-5.2-xhigh=v1b"] * 1)
-            parts.extend(["gpt-5.2-xhigh=v4"] * 5)
+            parts.extend(["gpt-5.2-xhigh=v1b"] * 6)
             params_step5_codegen = ",".join(parts)
 
             hint_generation_model = "gpt-5.2-xhigh"
